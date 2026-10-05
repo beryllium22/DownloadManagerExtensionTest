@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "enabled": true,
+  "askOnFirstDownload": true,
+  "askOnlyWhenNoRuleMatches": true,
+  "keepHistory": true,
+  "historyLimit": 80,
+  "routePriority": "site-first",
+  "conflictAction": "overwrite",
+  "siteRules": [
+    {
+      "hostPattern": "example.com",
+      "includeSubdomains": true,
+      "folder": "D:\\Tidy Security Test"
+    }
+  ],
+  "fileTypeRules": [],
+  "promptHosts": {},
+  "recentRoutes": []
+}

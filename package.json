@@ -1,0 +1,12 @@
+{
+  "name": "tidy-downloads-for-brave",
+  "version": "1.2.0",
+  "private": true,
+  "description": "A Chromium extension that saves downloads into friendly folders by website or file type.",
+  "scripts": {
+    "package": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-extension.ps1 && npm run verify-package",
+    "preview": "node tests/preview-server.js",
+    "verify-package": "node tests/package.test.js",
+    "test": "node --check background.js && node --check src/core.js && node --check src/storage.js && node --check src/options.js && node --check src/popup.js && node --check src/first-run.js && node --check tests/browser-mock.js && node --check tests/background.test.js && node --check tests/preview-server.js && node --check tests/preview-server.test.js && node --check tests/package.test.js && node tests/manifest.test.js && node tests/ui-structure.test.js && node tests/core.test.js && node tests/storage.test.js && node tests/background.test.js && node tests/preview-server.test.js && node tests/native-host.test.js"
+  }
+}

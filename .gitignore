@@ -1,0 +1,30 @@
+# Browser state and downloaded files must never be committed.
+.brave-test-downloads/
+.brave-test-profile*/
+.edge-test-profile*/
+*test-profile*/
+**/User Data/
+**/Cookies
+**/Login Data
+**/History
+**/Web Data
+# Per-machine native host installation and build outputs.
+native-host/generated/
+dist/
+node_modules/
+# Credentials, exported user settings, logs and local-only artifacts.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+*.har
+*.crdownload
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+.DS_Store
+Thumbs.db

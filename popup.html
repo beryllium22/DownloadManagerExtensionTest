@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tidy Downloads</title>
+    <link rel="stylesheet" href="styles/ui.css">
+  </head>
+  <body class="popup-body">
+    <main class="popup-shell">
+      <header class="popup-topbar">
+        <div class="brand brand-compact">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false">
+              <path d="M8.5 15.5h11l4 4h16v17h-31z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+              <path d="M24 13v15m-5-5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <h1>Tidy Downloads</h1>
+            <p id="popup-host" class="muted">Checking this tab</p>
+          </div>
+        </div>
+        <button id="open-options" class="icon-button quiet-button" type="button" aria-label="Open all settings" title="All settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.2 4.7v-2.6l-2.1-.7a6.9 6.9 0 0 0-.7-1.6l1-2-1.8-1.8-2 1a7 7 0 0 0-1.6-.7l-.7-2.1H9.7L9 4.9a7 7 0 0 0-1.6.7l-2-1-1.8 1.8 1 2A7 7 0 0 0 3.9 10l-2.1.7v2.6l2.1.7a7 7 0 0 0 .7 1.6l-1 2 1.8 1.8 2-1a7 7 0 0 0 1.6.7l.7 2.1h2.6l.7-2.1a7 7 0 0 0 1.6-.7l2 1 1.8-1.8-1-2a6.9 6.9 0 0 0 .7-1.6l2.1-.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </header>
+
+      <section id="popup-route-summary" class="route-summary" aria-live="polite">
+        <div class="route-summary-top">
+          <span class="eyebrow">Next download from this site</span>
+          <span id="popup-route-label" class="pill success">Ready</span>
+        </div>
+        <div class="route-destination">
+          <span class="route-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M3.5 7.5h6l2 2h9v9h-17z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <div>
+            <span class="route-overline">Destination</span>
+            <p id="popup-current-route"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="sorting-control">
+        <div>
+          <strong>Automatic sorting</strong>
+          <span id="popup-enabled-copy" class="muted">Loading</span>
+        </div>
+        <label class="switch-control">
+          <input id="popup-enabled" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="sr-only">Sort downloads automatically</span>
+        </label>
+      </section>
+
+      <details id="popup-site-editor" class="section disclosure-card">
+        <summary>
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4 7h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M12 12v4m-2-2h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="summary-copy">
+            <strong id="popup-editor-title">Choose a website folder</strong>
+            <small id="popup-editor-description">Set one destination for future downloads from this site.</small>
+          </span>
+          <span class="summary-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="disclosure-content">
+          <div class="context-row">
+            <span>Website</span>
+            <strong id="popup-site-host-display">—</strong>
+          </div>
+          <form id="popup-site-form" class="grid">
+            <input id="popup-site-host" type="hidden">
+            <label>
+              Folder
+              <input id="popup-site-folder" type="text" placeholder="Mods/Nexus Mods/{game} or D:\Games\Skyrim\Mods" autocomplete="off">
+              <span class="field-note">A simple name stays inside Downloads. A full computer path uses the optional helper.</span>
+            </label>
+            <div id="popup-folder-suggestions" class="suggestion-row" aria-label="Suggested folders"></div>
+            <label class="checkbox-line">
+              <input id="popup-site-subdomains" type="checkbox" checked>
+              Include related addresses, such as www and downloads
+            </label>
+            <button id="popup-save-site" class="primary full-width" type="submit">Save Website Folder</button>
+          </form>
+        </div>
+      </details>
+
+      <p id="popup-status" class="status popup-status" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="src/core.js"></script>
+    <script src="src/storage.js"></script>
+    <script src="src/popup.js"></script>
+  </body>
+</html>

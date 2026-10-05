@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tidy Downloads Settings</title>
+    <link rel="stylesheet" href="styles/ui.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header hero-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false">
+              <path d="M8.5 15.5h11l4 4h16v17h-31z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+              <path d="M24 13v15m-5-5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <span class="eyebrow">Download organizer</span>
+            <h1>Tidy Downloads</h1>
+            <p class="muted">Put downloads in the right folder without thinking about it.</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="export-settings" class="quiet-button" type="button" title="Download a copy of your Tidy Downloads settings">Back Up</button>
+          <button id="import-settings" class="quiet-button" type="button" title="Restore settings from a Tidy Downloads backup">Restore</button>
+          <input id="import-file" class="file-input" type="file" accept="application/json" aria-label="Choose a Tidy Downloads backup">
+        </div>
+      </header>
+
+      <nav class="tabs" role="tablist" aria-label="Settings sections">
+        <button id="tab-overview" class="tab-button" role="tab" type="button" data-tab="overview" aria-controls="overview" aria-selected="true"><span class="tab-label">Overview</span></button>
+        <button id="tab-site-rules" class="tab-button" role="tab" type="button" data-tab="site-rules" aria-controls="site-rules" aria-selected="false" tabindex="-1"><span class="tab-label">Websites</span><span id="site-tab-count" class="nav-count">0</span></button>
+        <button id="tab-file-type-rules" class="tab-button" role="tab" type="button" data-tab="file-type-rules" aria-controls="file-type-rules" aria-selected="false" tabindex="-1"><span class="tab-label">File Types</span><span id="file-tab-count" class="nav-count">0</span></button>
+        <button id="tab-prompts" class="tab-button" role="tab" type="button" data-tab="prompts" aria-controls="prompts" aria-selected="false" tabindex="-1"><span class="tab-label">Privacy</span></button>
+        <button id="tab-history" class="tab-button" role="tab" type="button" data-tab="history" aria-controls="history" aria-selected="false" tabindex="-1"><span class="tab-label">Activity</span><span id="history-tab-count" class="nav-count">0</span></button>
+      </nav>
+
+      <section id="overview" class="tab-panel grid" role="tabpanel" aria-labelledby="tab-overview">
+        <section class="overview-hero">
+          <div class="overview-hero-copy">
+            <span class="eyebrow">At a glance</span>
+            <h2 id="overview-title">Your downloads are being organized</h2>
+            <p id="overview-summary" class="muted">Loading your folder rules.</p>
+            <span id="overview-health" class="pill">Loading</span>
+          </div>
+          <label class="sorting-switch">
+            <span>
+              <strong>Automatic sorting</strong>
+              <small>Pause without losing your rules</small>
+            </span>
+            <input id="enabled" type="checkbox">
+            <span class="switch-track" aria-hidden="true"></span>
+          </label>
+        </section>
+
+        <div class="grid two-column dashboard-grid">
+          <div class="grid">
+            <section class="section setup-panel">
+              <div class="section-header">
+                <div class="numbered-heading">
+                  <span class="step-number">1</span>
+                  <div>
+                    <h2>Organize common file types</h2>
+                    <p class="muted">Start with sensible folders for videos, music, pictures, installers, documents, and archives.</p>
+                  </div>
+                </div>
+                <button id="apply-recommended-presets" class="primary" type="button">Add Suggested Folders</button>
+              </div>
+              <div id="preset-grid" class="preset-grid"></div>
+              <p id="preset-status" class="status" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="section quick-site-card">
+              <div class="section-header">
+                <div class="numbered-heading">
+                  <span class="step-number">2</span>
+                  <div>
+                    <h2>Give a website its own folder</h2>
+                    <p class="muted">Useful for mod sites, cloud drives, stores, or any website you want to keep separate.</p>
+                  </div>
+                </div>
+                <button id="add-site-rule" class="quiet-button" type="button">Advanced Rule</button>
+              </div>
+              <form id="quick-site-form" class="form-grid">
+                <label>
+                  Website
+                  <input id="quick-site-host" type="text" placeholder="nexusmods.com" autocomplete="off">
+                  <span class="field-note">Paste a full link or type the website name.</span>
+                </label>
+                <label>
+                  Save its downloads to
+                  <input id="quick-site-folder" type="text" placeholder="Mods/Nexus Mods" autocomplete="off">
+                  <span class="field-note">A folder name stays inside Downloads. Full paths use the optional helper.</span>
+                </label>
+                <label class="checkbox-line wide">
+                  <input id="quick-site-subdomains" type="checkbox" checked>
+                  Include related addresses, such as www and downloads
+                </label>
+                <div class="footer-actions wide">
+                  <button id="quick-site-save" class="primary" type="submit">Save Website Folder</button>
+                </div>
+              </form>
+              <p id="quick-site-status" class="status" role="status" aria-live="polite"></p>
+            </section>
+          </div>
+
+          <aside class="grid overview-sidebar">
+            <section class="section status-card">
+              <div class="section-header">
+                <div>
+                  <span class="eyebrow">Your setup</span>
+                  <h2>Folder rules</h2>
+                </div>
+              </div>
+              <div class="stat-grid">
+                <div><strong id="site-rule-count">0</strong><span>Websites</span></div>
+                <div><strong id="file-rule-count">0</strong><span>File types</span></div>
+                <div><strong id="prompt-count">0</strong><span>Remembered</span></div>
+              </div>
+            </section>
+
+            <section class="section routing-guide">
+              <div class="section-header">
+                <div>
+                  <span class="eyebrow">Simple by design</span>
+                  <h2>How a folder is chosen</h2>
+                </div>
+              </div>
+              <div class="route-step"><span>1</span><div><strong>Best matching rule</strong><small>More specific rules win</small></div></div>
+              <div class="route-connector" aria-hidden="true"></div>
+              <div class="route-step"><span>2</span><div><strong>Your priority choice</strong><small>Breaks a website and file type tie</small></div></div>
+              <div class="route-connector" aria-hidden="true"></div>
+              <div class="route-step"><span>3</span><div><strong>Normal Downloads</strong><small>The safe fallback</small></div></div>
+            </section>
+
+            <section class="section">
+              <div class="section-header">
+                <div>
+                  <span class="eyebrow">Preferences</span>
+                  <h2>First-time questions</h2>
+                </div>
+              </div>
+              <div class="toggle-row">
+                <label>
+                  <span><strong>Ask about new websites</strong><small>Offer a folder after the first download</small></span>
+                  <input id="ask-on-first-download" type="checkbox">
+                </label>
+              </div>
+              <div class="toggle-row">
+                <label>
+                  <span><strong>Only ask when unmatched</strong><small>Stay quiet when another rule already applies</small></span>
+                  <input id="ask-only-unmatched" type="checkbox">
+                </label>
+              </div>
+            </section>
+
+            <details class="section advanced-card">
+              <summary>Advanced sorting choices<span class="summary-chevron" aria-hidden="true"></span></summary>
+              <div class="form-grid single-column details-body">
+                <label>
+                  If two choices match
+                  <select id="route-priority">
+                    <option value="site-first">Use the website folder</option>
+                    <option value="file-type-first">Use the file type folder</option>
+                  </select>
+                </label>
+                <label>
+                  If a file name already exists
+                  <select id="conflict-action">
+                    <option value="uniquify">Keep both files</option>
+                    <option value="prompt">Ask me</option>
+                    <option value="overwrite">Replace the old file</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+
+            <section class="notice folder-guide">
+              <span class="notice-icon" aria-hidden="true">i</span>
+              <div>
+                <strong>Folder names are usually enough</strong>
+                <span><strong>Media/Videos</strong> stays inside Downloads. A full path such as <strong>D:\Games\Mods</strong> needs the computer helper.</span>
+              </div>
+            </section>
+
+            <section class="section helper-card">
+              <div class="section-header">
+                <div>
+                  <span class="eyebrow">Optional</span>
+                  <h2>Computer Folder Helper</h2>
+                </div>
+              </div>
+              <p class="muted">Only needed when you save to a full path outside Downloads.</p>
+              <div class="section-actions">
+                <button id="test-native-host" type="button">Check Helper</button>
+                <button id="retry-native-moves" type="button" hidden>Retry Pending Moves</button>
+              </div>
+              <div id="native-move-summary" class="helper-summary" hidden>
+                <strong id="native-move-count"></strong>
+                <span id="native-move-detail" class="muted"></span>
+              </div>
+              <p id="native-host-status" class="status" role="status" aria-live="polite"></p>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="site-rules" class="tab-panel grid" role="tabpanel" aria-labelledby="tab-site-rules" hidden>
+        <section class="section page-section">
+          <div class="section-header">
+            <div>
+              <span class="eyebrow">Highest priority</span>
+              <h2>Website rules</h2>
+              <p class="muted">Give a website—or one game on a website—its own destination.</p>
+            </div>
+            <button class="primary" type="button" data-open-site-dialog>New Website Rule</button>
+          </div>
+          <div class="toolbar search-toolbar">
+            <input id="site-filter" type="search" placeholder="Search websites or folders" aria-label="Search website folders">
+          </div>
+          <div id="site-rules-list" class="rule-list"></div>
+        </section>
+      </section>
+
+      <section id="file-type-rules" class="tab-panel grid" role="tabpanel" aria-labelledby="tab-file-type-rules" hidden>
+        <section class="section page-section">
+          <div class="section-header">
+            <div>
+              <span class="eyebrow">Smart fallback</span>
+              <h2>File type rules</h2>
+              <p class="muted">Keep videos, archives, documents, installers, and other formats together.</p>
+            </div>
+            <button id="add-file-rule" class="primary" type="button">New File Type Rule</button>
+          </div>
+          <div class="toolbar search-toolbar">
+            <input id="file-filter" type="search" placeholder="Search file types or folders" aria-label="Search file type folders">
+          </div>
+          <div id="file-rules-list" class="rule-list"></div>
+        </section>
+      </section>
+
+      <section id="prompts" class="tab-panel grid two-column" role="tabpanel" aria-labelledby="tab-prompts" hidden>
+        <section class="section page-section">
+          <div class="section-header">
+            <div>
+              <span class="eyebrow">Prompt memory</span>
+              <h2>Remembered websites</h2>
+              <p class="muted">Tidy Downloads remembers your answer so the same website does not interrupt you again.</p>
+            </div>
+            <button id="clear-prompts" type="button">Reset All Answers</button>
+          </div>
+          <div id="prompt-list"></div>
+        </section>
+        <aside class="grid">
+          <section class="section">
+            <div class="section-header">
+              <div>
+                <span class="eyebrow">Stored only here</span>
+                <h2>Recent activity</h2>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <label>
+                <span><strong>Keep a local activity list</strong><small>Useful for checking where a file was sent</small></span>
+                <input id="keep-history" type="checkbox">
+              </label>
+            </div>
+            <label>
+              Keep up to
+              <select id="history-limit">
+                <option value="20">20 downloads</option>
+                <option value="80">80 downloads</option>
+                <option value="200">200 downloads</option>
+              </select>
+            </label>
+            <p class="field-note">File names and destinations stay in this browser. Full download URLs and private-window downloads are never recorded.</p>
+          </section>
+          <section class="notice folder-guide">
+            <span class="notice-icon" aria-hidden="true">✓</span>
+            <div><strong>Private windows stay private</strong><span>No first-time questions and no activity entries.</span></div>
+          </section>
+        </aside>
+      </section>
+
+      <section id="history" class="tab-panel grid" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <section class="section page-section">
+          <div class="section-header">
+            <div>
+              <span class="eyebrow">Stored on this device</span>
+              <h2>Recent activity</h2>
+              <p class="muted">See where recent downloads were routed without storing their full source URLs.</p>
+            </div>
+            <button id="clear-history" class="danger-subtle" type="button">Clear Activity</button>
+          </div>
+          <div id="history-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <div id="app-toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <dialog id="rule-dialog" aria-labelledby="rule-dialog-title" aria-describedby="rule-dialog-description">
+      <form id="rule-form" method="dialog" class="section dialog-panel">
+        <div class="dialog-header">
+          <div>
+            <span class="eyebrow">Rule editor</span>
+            <h2 id="rule-dialog-title">Folder rule</h2>
+            <p id="rule-dialog-description" class="muted">Choose what should match and where it should save.</p>
+          </div>
+          <button id="close-rule-dialog" class="icon-button" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="rule-id" type="hidden">
+        <input id="rule-kind" type="hidden">
+        <div id="site-rule-fields" class="dialog-fields">
+          <div class="form-grid">
+            <label>
+              Website
+              <input id="site-host" type="text" placeholder="nexusmods.com" autocomplete="off">
+              <span class="field-note">Paste a full link or type the website name.</span>
+            </label>
+            <label>
+              Save downloads to
+              <input id="site-folder" type="text" placeholder="Mods/Nexus Mods" autocomplete="off">
+              <span class="field-note">Use a folder inside Downloads, a full path, or {game} when a game can be detected.</span>
+            </label>
+            <label class="checkbox-line wide">
+              <input id="site-include-subdomains" type="checkbox">
+              Include related addresses, such as www and downloads
+            </label>
+            <label class="checkbox-line wide">
+              <input id="site-enabled" type="checkbox">
+              Use this rule
+            </label>
+          </div>
+          <details class="advanced-fields">
+            <summary>Advanced matching<span class="summary-chevron" aria-hidden="true"></span></summary>
+            <div class="form-grid details-body">
+              <label>
+                Limit to a game or source
+                <input id="site-source-game" type="text" placeholder="Optional, for example skyrimspecialedition" autocomplete="off">
+                <span class="field-note">Leave empty for every download from this website.</span>
+              </label>
+              <label>
+                Which files should match?
+                <select id="site-extension-mode">
+                  <option value="all">All files</option>
+                  <option value="only">Only these file endings</option>
+                  <option value="except">Everything except these endings</option>
+                </select>
+              </label>
+              <label class="wide">
+                File endings
+                <input id="site-extensions" type="text" placeholder="zip, 7z, rar" autocomplete="off">
+                <span class="field-note">Needed only when the previous choice mentions file endings.</span>
+              </label>
+            </div>
+          </details>
+        </div>
+        <div id="file-rule-fields" class="dialog-fields" hidden>
+          <div class="form-grid">
+            <label>
+              Rule name
+              <input id="file-name" type="text" placeholder="Videos" autocomplete="off">
+            </label>
+            <label>
+              Save matching files to
+              <input id="file-folder" type="text" placeholder="Media/Videos or D:\Media\Videos" autocomplete="off">
+            </label>
+            <label class="wide">
+              File endings
+              <input id="file-extensions" type="text" placeholder="mp4, mkv, webm" autocomplete="off">
+              <span class="field-note">Type endings without the dot, separated by commas.</span>
+            </label>
+            <label class="checkbox-line wide">
+              <input id="file-enabled" type="checkbox">
+              Use this rule
+            </label>
+          </div>
+          <details class="advanced-fields">
+            <summary>Advanced matching<span class="summary-chevron" aria-hidden="true"></span></summary>
+            <div class="form-grid single-column details-body">
+              <label>
+                Content type patterns
+                <input id="file-mime-patterns" type="text" placeholder="video/*, audio/*" autocomplete="off">
+                <span class="field-note">Optional. Useful when a website hides the file ending.</span>
+              </label>
+            </div>
+          </details>
+        </div>
+        <section id="rule-preview" class="rule-preview" aria-live="polite">
+          <div class="rule-preview-heading">
+            <span class="route-overline">Rule preview</span>
+            <span id="rule-preview-mode" class="pill">Inside Downloads</span>
+          </div>
+          <div class="rule-preview-route">
+            <div>
+              <span class="route-overline">Matches</span>
+              <strong id="rule-preview-source">Choose what should match</strong>
+            </div>
+            <span class="route-arrow" aria-hidden="true">→</span>
+            <div>
+              <span class="route-overline">Save to</span>
+              <strong id="rule-preview-folder">Choose a folder</strong>
+            </div>
+          </div>
+          <p id="rule-preview-description" class="field-note">The preview updates while you type.</p>
+        </section>
+        <label class="notes-field">
+          <span class="field-label">Note <span class="optional-label">Optional</span></span>
+          <textarea id="rule-notes" placeholder="Why you made this rule"></textarea>
+        </label>
+        <p id="rule-form-status" class="status" role="status" aria-live="polite"></p>
+        <div class="dialog-footer">
+          <button id="delete-rule" class="danger" type="button">Delete</button>
+          <div class="footer-actions">
+            <button id="cancel-rule" type="button">Cancel</button>
+            <button id="save-rule" class="primary" type="submit">Save Rule</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="restore-dialog" aria-labelledby="restore-dialog-title" aria-describedby="restore-dialog-description">
+      <section class="section dialog-panel restore-dialog-panel">
+        <div class="dialog-header">
+          <div>
+            <span class="eyebrow">Safe restore</span>
+            <h2 id="restore-dialog-title">Review this backup</h2>
+            <p id="restore-dialog-description" class="muted">Check exactly what will become active before anything changes.</p>
+          </div>
+          <button id="close-restore-dialog" class="icon-button" type="button" aria-label="Close restore review">&times;</button>
+        </div>
+
+        <div class="restore-dialog-body">
+          <div class="restore-file-row">
+            <span class="route-overline">Selected backup</span>
+            <strong id="restore-file-name"></strong>
+          </div>
+
+          <dl class="restore-summary-grid">
+            <div>
+              <dt>Automatic sorting</dt>
+              <dd id="restore-sorting-status"></dd>
+            </div>
+            <div>
+              <dt>Folder rules</dt>
+              <dd id="restore-enabled-rule-count"></dd>
+            </div>
+            <div>
+              <dt>Name collisions</dt>
+              <dd id="restore-collision-status"></dd>
+            </div>
+          </dl>
+
+          <section id="restore-path-section" class="restore-path-section" hidden>
+            <div>
+              <span class="route-overline">Full-path destinations</span>
+              <h3>Files may leave your Downloads folder</h3>
+            </div>
+            <ul id="restore-path-list" class="restore-path-list"></ul>
+          </section>
+
+          <div id="restore-warning" class="notice restore-warning" hidden>
+            <span class="notice-icon" aria-hidden="true">!</span>
+            <div>
+              <strong>Extra confirmation required</strong>
+              <span id="restore-warning-text"></span>
+            </div>
+          </div>
+
+          <label id="restore-confirm-line" class="checkbox-line restore-confirm-line" hidden>
+            <input id="restore-confirm-checkbox" type="checkbox">
+            I understand that this backup can move or replace files.
+          </label>
+          <p id="restore-status" class="status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="dialog-footer restore-dialog-footer">
+          <span class="muted">Restore replaces the current settings.</span>
+          <div class="footer-actions">
+            <button id="cancel-restore" type="button">Cancel</button>
+            <button id="apply-restore" class="primary" type="button" disabled>Restore Settings</button>
+          </div>
+        </div>
+      </section>
+    </dialog>
+
+    <script src="src/core.js"></script>
+    <script src="src/storage.js"></script>
+    <script src="src/options.js"></script>
+  </body>
+</html>

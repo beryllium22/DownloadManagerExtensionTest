@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tidy Downloads</title>
+    <link rel="stylesheet" href="styles/ui.css">
+  </head>
+  <body class="prompt-body">
+    <main class="prompt-shell">
+      <header class="prompt-topbar">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" focusable="false">
+            <path d="M8.5 15.5h11l4 4h16v17h-31z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M24 13v15m-5-5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <span class="eyebrow">One-time setup</span>
+          <h1>Choose where this site should save</h1>
+          <p id="prompt-host" class="muted"></p>
+        </div>
+      </header>
+
+      <section class="download-context" aria-label="Current download">
+        <span class="download-context-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 3v11m-4-4 4 4 4-4M5 18h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <div>
+          <span class="route-overline">Downloading now</span>
+          <strong id="prompt-filename"></strong>
+        </div>
+        <span class="pill">This file is unchanged</span>
+      </section>
+
+      <section class="section choice-section primary-choice">
+        <div class="section-header">
+          <div>
+            <span class="choice-label">Recommended</span>
+            <h2>Keep this website together</h2>
+            <p class="muted">Future downloads from this website will always go to the folder below.</p>
+          </div>
+        </div>
+        <form id="site-prompt-form" class="grid">
+          <input id="site-host" type="hidden">
+          <label>
+            Save future downloads to
+            <input id="site-folder" type="text" placeholder="Mods/Nexus Mods/{game} or D:\Games\Skyrim\Mods" autocomplete="off">
+            <span class="field-note">Use a folder inside Downloads or a full computer path if the helper is installed.</span>
+          </label>
+          <div id="site-folder-suggestions" class="suggestion-row" aria-label="Suggested website folders"></div>
+          <label class="checkbox-line">
+            <input id="site-subdomains" type="checkbox" checked>
+            Include related addresses, such as www and downloads
+          </label>
+          <button id="save-site-rule" class="primary full-width" type="submit">Use This Folder</button>
+        </form>
+        <p id="site-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <details id="file-type-section" class="section disclosure-card alternative-choice">
+        <summary>
+          <span class="summary-icon secondary" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M6 3.5h8l4 4v13H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M14 3.5v4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="summary-copy">
+            <strong id="file-type-choice-label">Organize every file of this type instead</strong>
+            <small>Use the same folder no matter which website it came from.</small>
+          </span>
+          <span class="summary-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="disclosure-content">
+          <form id="type-prompt-form" class="grid">
+            <label>
+              File ending
+              <input id="type-extension" type="text" autocomplete="off">
+            </label>
+            <label>
+              Save these files to
+              <input id="type-folder" type="text" placeholder="Compressed Files or D:\Media\Archives" autocomplete="off">
+            </label>
+            <div id="type-folder-suggestions" class="suggestion-row" aria-label="Suggested file type folders"></div>
+            <button id="save-file-rule" class="full-width" type="submit">Use This Folder For This File Type</button>
+          </form>
+          <p id="type-status" class="status" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+
+      <p class="prompt-footnote">This choice only changes future downloads. You can edit or remove it any time.</p>
+
+      <div class="footer-actions">
+        <button id="keep-default" class="quiet-button" type="button">Not Now</button>
+        <button id="open-settings" class="text-button" type="button">Open All Settings</button>
+      </div>
+    </main>
+
+    <script src="src/core.js"></script>
+    <script src="src/storage.js"></script>
+    <script src="src/first-run.js"></script>
+  </body>
+</html>
