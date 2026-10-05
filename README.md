@@ -1,14 +1,71 @@
 # Tidy Downloads for Brave
 
-A lightweight Chromium extension that helps Brave save downloads into folders automatically.
+### Built for modders. Made for manual downloads.
 
-You can sort downloads by:
+**Spend less time hunting through archives—and more time building your next mod setup.**
 
-- Website, such as `nexusmods.com` to `Mods/Nexus Mods`
-- Nexus Mods game, such as `nexusmods.com` to `Mods/Nexus Mods/{game}`
-- Full computer folder, such as `nexusmods.com` to `D:\Games\Skyrim\Mods`
-- File type, such as `.mp4` to `Media/Videos`
-- Broad media type, such as videos, audio, pictures, documents, compressed files, and installers
+Manual mod downloads add up quickly. A few files from Nexus Mods become a crowded Downloads folder: different games, patches, textures, optional files, and archives you meant to install later. Before long, finding the right download becomes another job.
+
+**Tidy Downloads for Brave** is a lightweight browser extension built for game modders who want a clearer way to organize and keep track of those manual downloads. It routes new files into folders you choose, separates Nexus Mods downloads by game when game information is available, and gives you an optional local view of recent routing activity.
+
+It is not a mod manager. It does not install mods, manage load orders, or resolve dependencies. It handles the step before that: keeping the files you download organized and easy to find.
+
+## 🎮 Give every game's downloads a home
+
+Instead of mixing Skyrim and Fallout archives together, use one Nexus Mods rule with a game-aware destination:
+
+```text
+Mods/Nexus Mods/{game}
+```
+
+When the download page, URL, or referrer identifies the game, files can land in folders such as:
+
+```text
+Downloads/
+└── Mods/
+    └── Nexus Mods/
+        ├── Skyrim Special Edition/
+        └── Fallout 4/
+```
+
+Add game-specific rules when you want more control, or use the shared rule to keep recognized games separated automatically.
+
+## Keep track of what you downloaded—and where it went
+
+The optional recent-activity view shows filenames, websites, available game/source information, and routing destinations. It helps answer the everyday modding question:
+
+> “Where did that archive I just downloaded end up?”
+
+This is a local routing record, not a mod-version tracker or a permanent archive catalogue.
+
+## Your websites. Your folders. Your workflow.
+
+- **Organize by source.** Give Nexus Mods and other download websites their own destinations.
+- **Organize by file type.** Create rules for ZIP, 7z, RAR, and other file endings, alongside categories for documents and media.
+- **Refine your rules.** Use game-specific matching, subdomains, and file endings where a general website rule is not enough.
+- **Choose a local drive folder.** The optional Windows native helper moves completed downloads into your chosen folder, including destinations on another drive.
+- **Add rules as you browse.** Use a page context-menu shortcut or an optional first-download prompt.
+- **Stay in control.** Pause routing, switch website/file-type priority, turn activity history off, and export or restore your configuration.
+
+Downloads without a matching rule keep Brave's normal download behavior.
+
+## Local settings, without cloud sync
+
+Rules and recent activity are stored locally in extension storage. Recent activity does not retain full download URLs or their query parameters. Incognito downloads are excluded from recent activity and first-download prompts; downloads requiring a native move stay with the browser's normal destination in incognito.
+
+Exported settings may include remembered websites, filenames, destinations, and activity timestamps. Treat those backups as private.
+
+## Start simple. Expand when you need to.
+
+Load the extension in Brave, add a Nexus Mods website rule, and choose a game-aware folder. Subfolders inside Brave's normal Downloads location work without additional software. Full Windows drive paths require the separately installed native helper.
+
+---
+
+**For modders who download manually—and want the files, not the folder chaos.**
+
+---
+
+## Installation and technical reference
 
 ## Folder modes
 
@@ -74,19 +131,6 @@ If a completed file could not be moved because the helper was unavailable, the p
 2. Choose `Add Suggested Folders`.
 3. Add special websites you care about, such as Nexus Mods.
 4. Leave unknown sites alone; they will keep using Brave's normal Downloads folder unless you save a folder for them.
-
-## Privacy and safety
-
-- Folder names are checked before saving.
-- Absolute paths are handled by the native helper and still block obvious system folders.
-- The helper only accepts files created inside the Tidy Downloads staging folder.
-- Parent folders like `../Something` are blocked.
-- System-looking folders are blocked to avoid confusing or unsafe destinations.
-- Recent activity is stored only in extension storage and can be turned off.
-- Recent activity does not retain full download URLs or URL query data.
-- Incognito downloads do not trigger the first-time website prompt or appear in recent activity.
-- Incognito downloads that match a full Windows path stay with the browser's normal download destination and are never sent to the native helper.
-- Restoring a backup always shows the normalized settings first; full paths and overwrite behavior require an extra acknowledgment.
 
 ## Rule priority
 
