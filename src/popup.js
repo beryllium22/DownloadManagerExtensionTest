@@ -61,7 +61,7 @@
           value.enabled = els["popup-enabled"].checked;
         });
         settings = result.settings;
-        setStatus(settings.enabled ? "Automatic sorting is on." : "Automatic sorting is paused.", "ok");
+        setStatus(settings.enabled ? "Sorting is on." : "Sorting is paused. Downloads stay in the normal folder.", "ok");
         render();
       } catch (error) {
         els["popup-enabled"].checked = settings.enabled;
@@ -120,17 +120,17 @@
     if (genericSiteRule) {
       els["popup-site-folder"].value = genericSiteRule.folder;
       els["popup-site-subdomains"].checked = genericSiteRule.includeSubdomains;
-      els["popup-save-site"].textContent = "Update Website Folder";
-      els["popup-editor-title"].textContent = "Edit this website folder";
+      els["popup-save-site"].textContent = "Update folder";
+      els["popup-editor-title"].textContent = "Change this website's folder";
       els["popup-editor-description"].textContent = genericSiteRule.folder;
     } else {
-      els["popup-save-site"].textContent = "Save Website Folder";
+      els["popup-save-site"].textContent = "Save website folder";
       els["popup-editor-title"].textContent = matchingSiteRule
-        ? "Add a general website folder"
-        : "Choose a website folder";
+        ? "Add a folder for the rest of this site"
+        : "Choose a folder for this website";
       els["popup-editor-description"].textContent = matchingSiteRule
-        ? `Create a fallback for other downloads from ${currentHost}.`
-        : "Keep future downloads from this site together.";
+        ? `Other downloads from ${currentHost} can use their own folder.`
+        : "Future downloads from this site will use it.";
     }
     renderFolderSuggestions();
 
@@ -143,14 +143,14 @@
       els["popup-route-label"].textContent = "No site";
       els["popup-route-label"].className = "pill warning";
       els["popup-route-summary"].classList.add("is-unavailable");
-      els["popup-current-route"].textContent = "Open a normal website tab to see its destination.";
+      els["popup-current-route"].textContent = "Open a website to see where its downloads will go.";
     } else if (!settings.enabled) {
       els["popup-route-label"].textContent = "Paused";
       els["popup-route-label"].className = "pill warning";
       els["popup-route-summary"].classList.add("is-paused");
-      els["popup-current-route"].textContent = "Normal Downloads folder while sorting is paused";
+      els["popup-current-route"].textContent = "The normal Downloads folder";
     } else if (matchingSiteRule) {
-      els["popup-route-label"].textContent = matchingSiteRule.sourceGame ? "Game rule" : "Website rule";
+      els["popup-route-label"].textContent = matchingSiteRule.sourceGame ? "This game" : "This website";
       els["popup-route-label"].className = "pill success";
       const strong = document.createElement("strong");
       strong.textContent = Core.resolveFolderTemplate(matchingSiteRule.folder, currentSourceContext);
@@ -162,10 +162,10 @@
           els["popup-site-folder"].value = suggestedFolder;
         }
       }
-      els["popup-route-label"].textContent = "Normal";
+      els["popup-route-label"].textContent = "No website folder";
       els["popup-route-label"].className = "pill";
       els["popup-route-summary"].classList.add("is-normal");
-      els["popup-current-route"].textContent = "File type rule or normal Downloads folder";
+      els["popup-current-route"].textContent = "A file type folder, or the normal Downloads folder";
     }
 
     [els["popup-site-host"], els["popup-site-folder"], els["popup-site-subdomains"], els["popup-save-site"]]
