@@ -21,6 +21,7 @@
       currentSourceContext = currentTabContext.sourceContext;
       currentDownloadItem = currentTabContext.downloadItem;
       render();
+      await refreshPendingMoves();
     } catch (error) {
       els["popup-route-label"].textContent = "Needs attention";
       els["popup-route-label"].className = "pill warning";
@@ -37,6 +38,7 @@
       "popup-route-summary",
       "popup-route-label",
       "popup-current-route",
+      "popup-pending",
       "popup-site-editor",
       "popup-editor-title",
       "popup-editor-description",
@@ -162,10 +164,13 @@
           els["popup-site-folder"].value = suggestedFolder;
         }
       }
-      els["popup-route-label"].textContent = "Normal";
+      const fallback = Core.describeFileTypeFallback(settings);
+      els["popup-route-label"].textContent = fallback ? "File type" : "Normal";
       els["popup-route-label"].className = "pill";
       els["popup-route-summary"].classList.add("is-normal");
-      els["popup-current-route"].textContent = "File type rule or normal Downloads folder";
+      els["popup-current-route"].textContent = fallback
+        ? `File types use ${fallback}`
+        : "Normal Downloads folder";
     }
 
     [els["popup-site-host"], els["popup-site-folder"], els["popup-site-subdomains"], els["popup-save-site"]]
@@ -242,6 +247,48 @@
     } finally {
       els["popup-save-site"].disabled = !currentHost;
     }
+  }
+
+  async function refreshPendingMoves() {
+    try {
+      const status = await sendRuntimeMessage({ action: "getNativeMoveStatus" });
+      const count = Number(status && status.pendingCount) || 0;
+      const failedCount = Number(status && status.failedCount) || 0;
+      if (!count) {
+        els["popup-pending"].hidden = true;
+        els["popup-pending"].textContent = "";
+        return;
+      }
+      const noun = count === 1 ? "download" : "downloads";
+      const waiting = count === 1 ? "is" : "are";
+      let pendingText = `${count} ${noun} ${waiting} waiting to move out of Downloads.`;
+      if (failedCount === count) {
+        pendingText = `${count} ${noun} ${waiting} still waiting to move and ${count === 1 ? "needs" : "need"} the computer helper.`;
+      } else if (failedCount) {
+        pendingText = `${count} ${noun} ${waiting} still waiting to move. ${failedCount} ${failedCount === 1 ? "needs" : "need"} the computer helper.`;
+      }
+      els["popup-pending"].hidden = false;
+      els["popup-pending"].className = failedCount ? "status error" : "status";
+      els["popup-pending"].textContent = pendingText;
+    } catch (_error) {
+      els["popup-pending"].hidden = true;
+    }
+  }
+
+  function sendRuntimeMessage(message) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(message, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        if (response && response.ok === false) {
+          reject(new Error(response.error || "The background task could not complete the request."));
+          return;
+        }
+        resolve(response || {});
+      });
+    });
   }
 
   function openOptions() {

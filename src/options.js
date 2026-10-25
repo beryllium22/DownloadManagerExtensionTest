@@ -54,6 +54,8 @@
       "overview-health",
       "overview-title",
       "overview-summary",
+      "site-priority-label",
+      "file-priority-label",
       "site-rule-count",
       "file-rule-count",
       "prompt-count",
@@ -290,6 +292,9 @@
     els["history-limit"].closest("label").classList.toggle("field-disabled", !state.settings.keepHistory);
     els["route-priority"].value = state.settings.routePriority;
     els["conflict-action"].value = state.settings.conflictAction;
+    const siteFirst = state.settings.routePriority !== "file-type-first";
+    els["site-priority-label"].textContent = siteFirst ? "Checked first" : "After file types";
+    els["file-priority-label"].textContent = siteFirst ? "When no website rule matches" : "Checked first";
 
     const validationErrors = Core.validateSettings(state.settings);
     const activeSiteCount = state.settings.siteRules.filter((rule) => rule.enabled).length;
@@ -1147,7 +1152,7 @@
     els["restore-enabled-rule-count"].textContent = `${summary.enabledRuleCount} enabled (${summary.enabledSiteRuleCount} website, ${summary.enabledFileTypeRuleCount} file type)`;
     els["restore-collision-status"].textContent = {
       uniquify: "Keep both files",
-      prompt: "Ask before replacing",
+      prompt: "Ask inside Downloads",
       overwrite: "Replace existing files"
     }[summary.conflictAction] || summary.conflictAction;
 

@@ -17,12 +17,29 @@
     "about",
     "account",
     "api",
+    "assets",
+    "cdn",
+    "common",
+    "content",
     "core",
+    "data",
+    "download",
+    "downloads",
+    "file",
+    "files",
+    "games",
     "images",
+    "libs",
+    "media",
     "mods",
     "news",
     "premium",
-    "users"
+    "static",
+    "staticdelivery",
+    "upload",
+    "uploads",
+    "users",
+    "widgets"
   ]);
   const KNOWN_NEXUS_GAME_NAMES = {
     baldursgate3: "Baldur's Gate 3",
@@ -40,9 +57,53 @@
     skyrim: "Skyrim",
     skyrimspecialedition: "Skyrim Special Edition",
     starfield: "Starfield",
+    baldursgate: "Baldur's Gate",
+    baldursgate2: "Baldur's Gate II",
+    bladesandsorcery: "Blade & Sorcery",
+    bloodborne: "Bloodborne",
+    citiesskylines: "Cities: Skylines",
+    citiesskylines2: "Cities: Skylines II",
+    darksouls: "Dark Souls",
+    darksouls2: "Dark Souls II",
+    darksouls3: "Dark Souls III",
+    demonssouls: "Demon's Souls",
+    divinityoriginalsin2: "Divinity: Original Sin 2",
+    dragonage2: "Dragon Age II",
+    dragonageinquisition: "Dragon Age: Inquisition",
+    dragonsdogma: "Dragon's Dogma",
+    dragonsdogma2: "Dragon's Dogma 2",
+    enderal: "Enderal",
+    enderalspecialedition: "Enderal Special Edition",
+    fallout4vr: "Fallout 4 VR",
+    gta5: "Grand Theft Auto V",
+    hogwartslegacy: "Hogwarts Legacy",
+    kerbalspaceprogram: "Kerbal Space Program",
+    kerbalspaceprogram2: "Kerbal Space Program 2",
+    kingdomcomedeliverance: "Kingdom Come: Deliverance",
+    kingdomcomedeliverance2: "Kingdom Come: Deliverance II",
+    lethalcompany: "Lethal Company",
+    masseffectlegendaryedition: "Mass Effect Legendary Edition",
+    minecraft: "Minecraft",
+    monsterhunterrise: "Monster Hunter Rise",
+    monsterhunterwilds: "Monster Hunter Wilds",
+    mountandblade2bannerlord: "Mount & Blade II: Bannerlord",
+    nomanssky: "No Man's Sky",
+    palworld: "Palworld",
+    reddeadredemption2: "Red Dead Redemption 2",
+    rimworld: "Rimworld",
+    sekiro: "Sekiro",
+    skyrimvr: "Skyrim VR",
     stardewvalley: "Stardew Valley",
     subnautica: "Subnautica",
-    witcher3: "The Witcher 3"
+    subnauticabelowzero: "Subnautica Below Zero",
+    terraria: "Terraria",
+    thesims4: "The Sims 4",
+    valheim: "Valheim",
+    warhammer40kdarktide: "Warhammer 40,000: Darktide",
+    warhammervermintide2: "Warhammer: Vermintide 2",
+    witcher2: "The Witcher 2",
+    witcher3: "The Witcher 3",
+    xcom2: "XCOM 2"
   };
   const RESERVED_WINDOWS_NAMES = new Set([
     "con",
@@ -97,7 +158,17 @@
     {
       name: "Documents",
       extensions: ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md"],
-      mimePatterns: ["application/pdf", "text/*"],
+      mimePatterns: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+        "text/markdown"
+      ],
       folder: "Documents"
     },
     {
@@ -294,7 +365,7 @@
       || parsed.searchParams.get("game")
       || parsed.searchParams.get("gameName");
     const querySlug = cleanGameSlug(queryGame);
-    if (querySlug) {
+    if (querySlug && !isRejectedGameSlug(querySlug)) {
       return querySlug;
     }
 
@@ -312,17 +383,27 @@
     const gamesIndex = parts.findIndex((part) => part.toLowerCase() === "games");
     if (gamesIndex >= 0 && parts[gamesIndex + 1]) {
       const gameFromApiPath = cleanGameSlug(parts[gamesIndex + 1]);
-      if (gameFromApiPath) {
+      if (gameFromApiPath && !isRejectedGameSlug(gameFromApiPath)) {
         return gameFromApiPath;
       }
     }
 
+    // File and CDN hosts often start with a folder like "cdn" or a numeric id.
+    // A game slug is only taken from the main site path, such as /skyrim/mods/1.
+    if (normalizeHostPattern(parsed.hostname) !== NEXUS_HOST_PATTERN) {
+      return "";
+    }
+
     const firstPathPart = parts[0] && cleanGameSlug(parts[0]);
-    if (firstPathPart && !NEXUS_NON_GAME_PATHS.has(firstPathPart)) {
+    if (firstPathPart && !isRejectedGameSlug(firstPathPart)) {
       return firstPathPart;
     }
 
     return "";
+  }
+
+  function isRejectedGameSlug(slug) {
+    return NEXUS_NON_GAME_PATHS.has(slug) || /^\d+$/.test(slug);
   }
 
   function normalizeGamePattern(input) {
@@ -610,6 +691,17 @@
       }
     }
 
+    const splitArchive = safeName.match(/(?:^|\.)(7z|zip|rar)\.(\d{3})$/);
+    if (splitArchive) {
+      candidates.add(splitArchive[1]);
+    }
+    if (/(?:^|\.)r\d{2}$/.test(safeName)) {
+      candidates.add("rar");
+    }
+    if (/(?:^|\.)z\d{2}$/.test(safeName)) {
+      candidates.add("zip");
+    }
+
     return candidates;
   }
 
@@ -805,15 +897,42 @@
     };
   }
 
+  function isBroadFileTypeRule(rule) {
+    if (!rule || typeof rule !== "object") {
+      return false;
+    }
+    const name = String(rule.name || "").trim().toLowerCase();
+    const folderResult = sanitizeDestinationPath(rule.folder);
+    const extensions = uniqueNormalizedExtensions(rule.extensions).slice().sort().join(",");
+    return PRESET_FILE_TYPE_RULES.some((preset) => {
+      const presetFolder = sanitizeDestinationPath(preset.folder);
+      const presetExtensions = uniqueNormalizedExtensions(preset.extensions).slice().sort().join(",");
+      return preset.name.toLowerCase() === name
+        && folderResult.ok
+        && presetFolder.ok
+        && folderResult.value === presetFolder.value
+        && extensions === presetExtensions;
+    });
+  }
+
   function normalizeFileTypeRule(rule) {
     const folderResult = sanitizeDestinationPath(rule && rule.folder);
+    const broad = isBroadFileTypeRule(rule);
+    const savedMimePatterns = uniqueMimePatterns(rule && rule.mimePatterns);
+    const preset = broad
+      ? PRESET_FILE_TYPE_RULES.find((entry) => entry.name.toLowerCase() === String(rule && rule.name || "").trim().toLowerCase())
+      : null;
+    const mimePatterns = preset && savedMimePatterns.includes("text/*")
+      ? uniqueMimePatterns(preset.mimePatterns)
+      : savedMimePatterns;
     return {
       id: rule && rule.id ? String(rule.id) : makeId("type"),
       enabled: rule ? rule.enabled !== false : true,
+      broad,
       name: String((rule && rule.name) || "File type folder").trim(),
       folder: folderResult.ok ? folderResult.value : "",
       extensions: uniqueNormalizedExtensions(rule && rule.extensions),
-      mimePatterns: uniqueMimePatterns(rule && rule.mimePatterns),
+      mimePatterns,
       notes: String((rule && rule.notes) || "").trim()
     };
   }
@@ -1042,9 +1161,48 @@
       ruleType: selectedType,
       ruleId: selectedRule.id || "",
       ruleName,
+      ruleBroad: selectedType === "file-type" && selectedRule.broad === true,
       sourceContext,
       reason: "matched"
     };
+  }
+
+  function shouldPromptForRoute(rawSettings, downloadItem, route) {
+    const decision = shouldPromptForHost(rawSettings, downloadItem);
+    if (!decision.shouldPrompt) {
+      return decision;
+    }
+
+    const settings = normalizeSettings(rawSettings);
+    if (!settings.askOnlyWhenNoRuleMatches || !route || !route.routed) {
+      return decision;
+    }
+
+    // Suggested folders match almost every mod archive. They should not hide
+    // the first-website question. A website rule, or a file-type rule the user
+    // changed, still keeps that prompt quiet.
+    if (route.ruleType === "site" || (route.ruleType === "file-type" && route.ruleBroad !== true)) {
+      return { shouldPrompt: false, host: decision.host };
+    }
+
+    return decision;
+  }
+
+  function describeFileTypeFallback(rawSettings) {
+    const settings = normalizeSettings(rawSettings);
+    const folders = [];
+    settings.fileTypeRules.forEach((rule) => {
+      if (rule.enabled && rule.folder && !folders.includes(rule.folder)) {
+        folders.push(rule.folder);
+      }
+    });
+    if (!folders.length) {
+      return "";
+    }
+
+    const shown = folders.slice(0, 3);
+    const extra = folders.length - shown.length;
+    return extra > 0 ? `${shown.join(", ")}, and ${extra} more` : shown.join(", ");
   }
 
   function hasSavedSiteRule(settings, host, downloadItem) {
@@ -1275,6 +1433,7 @@
     buildRecentRoute,
     computeRoute,
     defaultSettings,
+    describeFileTypeFallback,
     extractNexusGameSlugFromUrl,
     findMatchingFileTypeRule,
     findMatchingSiteRule,
@@ -1299,6 +1458,7 @@
     sanitizeFolderPath,
     sourceGameMatches,
     shouldPromptForHost,
+    shouldPromptForRoute,
     suggestFoldersForExtension,
     suggestFoldersForHost,
     uniqueMimePatterns,
