@@ -60,36 +60,8 @@
           </label>
         </section>
 
-        <section class="section">
-          <div class="section-header">
-            <div>
-              <h2>How a folder is chosen</h2>
-              <p class="muted">The first match below wins. Downloads with no match stay in Brave's normal Downloads folder.</p>
-            </div>
-          </div>
-          <ol class="plain-steps">
-            <li>
-              <strong>The closest rule</strong>
-              <span>A rule for one game, file ending, or subdomain beats a general rule for the same site.</span>
-            </li>
-            <li>
-              <strong>Your tie-breaker</strong>
-              <span>If a website rule and a file type rule both match, use the choice below.</span>
-            </li>
-            <li>
-              <strong>Downloads</strong>
-              <span>If nothing matches, the file is left alone.</span>
-            </li>
-          </ol>
-          <label class="inline-choice">
-            If a website and a file type both match
-            <select id="route-priority">
-              <option value="site-first">Use the website folder</option>
-              <option value="file-type-first">Use the file type folder</option>
-            </select>
-          </label>
-        </section>
-
+        <div class="home-grid">
+        <div class="home-main">
         <section class="section quick-site-card">
           <div class="section-header">
             <div>
@@ -123,12 +95,44 @@
           <div class="section-header">
             <div>
               <h2>Add file type folders</h2>
-              <p class="muted">These apply on every website, unless a website rule wins the tie-breaker above.</p>
+              <p class="muted">These apply on every website, unless a website rule wins the tie-breaker.</p>
             </div>
             <button id="apply-recommended-presets" class="primary" type="button">Add suggested folders</button>
           </div>
           <div id="preset-grid" class="preset-grid"></div>
           <p id="preset-status" class="status" role="status" aria-live="polite"></p>
+        </section>
+        </div>
+
+        <div class="home-side">
+        <section class="section route-explainer">
+          <div class="section-header">
+            <div>
+              <h2>How a folder is chosen</h2>
+              <p class="muted">The first match below wins. Downloads with no match stay in Brave's normal Downloads folder.</p>
+            </div>
+          </div>
+          <ol class="plain-steps">
+            <li>
+              <strong>The closest rule</strong>
+              <span>A rule for one game, file ending, or subdomain beats a general rule for the same site.</span>
+            </li>
+            <li>
+              <strong>Your tie-breaker</strong>
+              <span>If a website rule and a file type rule both match, use the choice below.</span>
+            </li>
+            <li>
+              <strong>Downloads</strong>
+              <span>If nothing matches, the file is left alone.</span>
+            </li>
+          </ol>
+          <label class="inline-choice">
+            If a website and a file type both match
+            <select id="route-priority">
+              <option value="site-first">Use the website folder</option>
+              <option value="file-type-first">Use the file type folder</option>
+            </select>
+          </label>
         </section>
 
         <details class="section advanced-card helper-card">
@@ -153,6 +157,8 @@
             <p id="native-host-status" class="status" role="status" aria-live="polite"></p>
           </div>
         </details>
+        </div>
+        </div>
       </section>
 
       <section id="site-rules" class="tab-panel" role="tabpanel" aria-labelledby="tab-site-rules" hidden>
