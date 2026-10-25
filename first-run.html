@@ -9,6 +9,12 @@
   <body class="prompt-body">
     <main class="prompt-shell">
       <header class="prompt-topbar">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" focusable="false">
+            <path d="M8.5 15.5h11l4 4h16v17h-31z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M24 13v15m-5-5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <div>
           <p class="eyebrow">First download from this site</p>
           <h1>Choose a folder</h1>
@@ -17,6 +23,11 @@
       </header>
 
       <section class="download-context" aria-label="Current download">
+        <span class="route-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 3v11m-4-4 4 4 4-4M5 18h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
         <div>
           <span class="route-overline">This file is already downloading</span>
           <strong id="prompt-filename"></strong>
