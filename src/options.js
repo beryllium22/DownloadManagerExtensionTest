@@ -665,7 +665,9 @@
       state.settings = result.settings;
       els["quick-site-folder"].value = "";
       state.quickFolderEdited = false;
-      setStatus(els["quick-site-status"], result.result ? "Website folder saved." : "Website folder updated.", "ok");
+      const savedMessage = result.result ? "Website folder saved." : "Website folder updated.";
+      setStatus(els["quick-site-status"], savedMessage, "ok");
+      showToast(savedMessage, "ok");
       render();
     } catch (error) {
       setStatus(els["quick-site-status"], error.message || "Could not save this website folder.", "error");

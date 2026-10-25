@@ -129,7 +129,7 @@
         ? "Add a folder for the rest of this site"
         : "Choose a folder for this website";
       els["popup-editor-description"].textContent = matchingSiteRule
-        ? `Other downloads from ${currentHost} can use their own folder.`
+        ? "Use this when a narrower rule does not match."
         : "Future downloads from this site will use it.";
     }
     renderFolderSuggestions();
