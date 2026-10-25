@@ -1,8 +1,16 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const { execFile } = require("node:child_process");
 const path = require("node:path");
 
 const hostPath = path.resolve(__dirname, "..", "native-host", "tidy-downloads-host.ps1");
+const hostSource = fs.readFileSync(hostPath, "utf8");
+assert.match(hostSource, /\.tidy-incoming-/);
+assert.doesNotMatch(hostSource, /Remove-Item -LiteralPath \$destination -Force/);
+const replaceIndex = hostSource.indexOf("$replaceExisting");
+const incomingMove = hostSource.indexOf("Move-Item -LiteralPath $sourcePath -Destination $incoming", replaceIndex);
+const backupMove = hostSource.indexOf("Move-Item -LiteralPath $destination -Destination $backup", incomingMove);
+assert.ok(replaceIndex > 0 && incomingMove > replaceIndex && backupMove > incomingMove, "overwrite must copy the new file in before moving the old file aside");
 
 function callHost(message) {
   return new Promise((resolve, reject) => {

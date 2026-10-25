@@ -150,7 +150,7 @@
               </div>
               <div class="toggle-row">
                 <label>
-                  <span><strong>Only ask when unmatched</strong><small>Stay quiet when another rule already applies</small></span>
+                  <span><strong>Only ask when unmatched</strong><small>Stay quiet when a website or custom file rule already applies</small></span>
                   <input id="ask-only-unmatched" type="checkbox">
                 </label>
               </div>
@@ -170,9 +170,10 @@
                   If a file name already exists
                   <select id="conflict-action">
                     <option value="uniquify">Keep both files</option>
-                    <option value="prompt">Ask me</option>
+                    <option value="prompt">Ask me inside Downloads</option>
                     <option value="overwrite">Replace the old file</option>
                   </select>
+                  <span class="field-note">Full computer paths keep both files instead of asking. Replace still replaces the file at that path.</span>
                 </label>
               </div>
             </details>
@@ -211,7 +212,7 @@
         <section class="section page-section">
           <div class="section-header">
             <div>
-              <span class="eyebrow">Highest priority</span>
+              <span id="site-priority-label" class="eyebrow">Checked first</span>
               <h2>Website rules</h2>
               <p class="muted">Give a website—or one game on a website—its own destination.</p>
             </div>
@@ -228,7 +229,7 @@
         <section class="section page-section">
           <div class="section-header">
             <div>
-              <span class="eyebrow">Smart fallback</span>
+              <span id="file-priority-label" class="eyebrow">When no website rule matches</span>
               <h2>File type rules</h2>
               <p class="muted">Keep videos, archives, documents, installers, and other formats together.</p>
             </div>
