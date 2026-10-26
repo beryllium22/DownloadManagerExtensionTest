@@ -1146,7 +1146,7 @@
     els["restore-enabled-rule-count"].textContent = `${summary.enabledRuleCount} enabled (${summary.enabledSiteRuleCount} website, ${summary.enabledFileTypeRuleCount} file type)`;
     els["restore-collision-status"].textContent = {
       uniquify: "Keep both files",
-      prompt: "Ask before replacing",
+      prompt: "Ask inside Downloads",
       overwrite: "Replace existing files"
     }[summary.conflictAction] || summary.conflictAction;
 

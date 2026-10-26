@@ -3,6 +3,7 @@ importScripts("src/core.js", "src/storage.js");
 const Core = self.DownloadRouterCore;
 const Store = self.DownloadRouterStorage;
 const PENDING_NATIVE_MOVES_KEY = "pendingNativeMoves";
+const PENDING_ROUTE_RECORDS_KEY = "pendingRouteRecords";
 let pendingMoveQueue = Promise.resolve();
 let recoveryPromise = null;
 
@@ -54,13 +55,18 @@ async function handleDownload(downloadItem, suggest) {
   try {
     const settings = await Store.getSettings();
     const route = Core.computeRoute(settings, downloadItem);
-    if (route.requiresNativeMove) {
+    if (route.requiresNativeMove && (downloadItem.incognito || downloadItem.id === undefined)) {
       // Native moves need persistent bookkeeping. Never create that state for a
       // private download, and do not stage a file we cannot associate with an ID.
-      if (downloadItem.incognito || downloadItem.id === undefined) {
-        suggest();
-        return;
-      }
+      suggest();
+      return;
+    }
+    if (!downloadItem.incognito && downloadItem.id !== undefined) {
+      // Keep this before suggest(). A tiny file can finish before a record
+      // written afterwards would be visible to the completion listener.
+      await rememberRouteRecord(downloadItem, route);
+    }
+    if (route.requiresNativeMove) {
       await rememberPendingNativeMove(downloadItem.id, route, settings);
     }
 
@@ -84,13 +90,18 @@ async function handleDownload(downloadItem, suggest) {
 }
 
 chrome.downloads.onChanged.addListener((delta) => {
-  if (delta && delta.state && delta.state.current === "complete") {
-    completeNativeMove(delta.id).catch((error) => console.error("Tidy Downloads native move failed", error));
+  if (!delta || !delta.state || delta.id === undefined) {
+    return;
+  }
+  if (delta.state.current === "complete") {
+    finishDownload(delta.id).catch((error) => console.error("Tidy Downloads could not finish a download", error));
+  } else if (delta.state.current === "interrupted") {
+    discardDownloadBookkeeping(delta.id).catch((error) => console.error("Tidy Downloads could not clear an interrupted download", error));
   }
 });
 
 chrome.downloads.onErased.addListener((downloadId) => {
-  removePendingNativeMove(downloadId).catch((error) => console.error("Tidy Downloads could not clear pending move", error));
+  discardDownloadBookkeeping(downloadId).catch((error) => console.error("Tidy Downloads could not clear download bookkeeping", error));
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -116,18 +127,16 @@ async function rememberDownloadAndPrompt(downloadItem, route) {
   }
 
   let promptHost = "";
+  const current = await Store.getSettings();
+  const preview = Core.shouldPromptForRoute(current, downloadItem, route);
+  const hostKnown = Boolean(preview.host && current.promptHosts[preview.host]);
+  if (!preview.shouldPrompt && !hostKnown) {
+    return;
+  }
 
   await Store.updateSettings((settings) => {
-    if (!settings.keepHistory) {
-      settings.recentRoutes = [];
-    } else {
-      const recent = Core.buildRecentRoute(downloadItem, route);
-      settings.recentRoutes = [recent].concat(settings.recentRoutes || []).slice(0, settings.historyLimit || Core.DEFAULT_HISTORY_LIMIT);
-    }
-
-    const prompt = Core.shouldPromptForHost(settings, downloadItem);
-    const shouldSkipMatchedPrompt = settings.askOnlyWhenNoRuleMatches && route && route.routed;
-    if (prompt.shouldPrompt && !shouldSkipMatchedPrompt) {
+    const prompt = Core.shouldPromptForRoute(settings, downloadItem, route);
+    if (prompt.shouldPrompt) {
       promptHost = prompt.host;
       const now = new Date().toISOString();
       settings.promptHosts[prompt.host] = {
@@ -202,14 +211,10 @@ async function completeNativeMove(downloadId) {
 
   const items = await downloadsSearch({ id: downloadId });
   const item = items && items[0];
-  if (!item || !item.filename) {
-    await removePendingNativeMove(downloadId);
-    return;
-  }
-  if (item.incognito) {
+  if (!item || !item.filename || item.incognito) {
     // Defensively clean up records created by older extension versions without
     // disclosing a private download path to the native helper.
-    await removePendingNativeMove(downloadId);
+    await discardDownloadBookkeeping(downloadId);
     return;
   }
   if (item.state && item.state !== "complete") {
@@ -228,6 +233,14 @@ async function completeNativeMove(downloadId) {
       throw new Error(response && response.error ? response.error : "Native helper did not move the file.");
     }
 
+    const finalName = response.path
+      ? String(response.path).split(/[/\\]/).filter(Boolean).pop()
+      : "";
+    try {
+      await commitRouteRecord(downloadId, finalName);
+    } catch (error) {
+      console.error("Tidy Downloads moved the file but could not record its destination", error);
+    }
     await removePendingNativeMove(downloadId);
     try {
       await downloadsErase({ id: downloadId });
@@ -266,15 +279,145 @@ async function getPendingNativeMoves() {
 }
 
 function updatePendingNativeMoves(mutator) {
+  return updateLocalMap(PENDING_NATIVE_MOVES_KEY, mutator);
+}
+
+function updateLocalMap(storageKey, mutator) {
   const operation = async () => {
-    const pendingMoves = await readPendingNativeMoves();
-    const result = await mutator(pendingMoves);
-    await setLocal({ [PENDING_NATIVE_MOVES_KEY]: pendingMoves });
+    const values = await readLocalMap(storageKey);
+    const result = await mutator(values);
+    await setLocal({ [storageKey]: values });
     return result;
   };
   const scheduled = pendingMoveQueue.then(operation, operation);
   pendingMoveQueue = scheduled.then(() => undefined, () => undefined);
   return scheduled;
+}
+
+async function readLocalMap(storageKey) {
+  const result = await getLocal(storageKey);
+  return result[storageKey] && typeof result[storageKey] === "object"
+    ? result[storageKey]
+    : {};
+}
+
+async function rememberRouteRecord(downloadItem, route) {
+  const recent = Core.buildRecentRoute(downloadItem, route);
+  await updateLocalMap(PENDING_ROUTE_RECORDS_KEY, (records) => {
+    records[String(downloadItem.id)] = {
+      createdAt: new Date().toISOString(),
+      requiresNativeMove: Boolean(route && route.requiresNativeMove),
+      recent
+    };
+  });
+}
+
+async function getRouteRecords() {
+  await pendingMoveQueue;
+  return readLocalMap(PENDING_ROUTE_RECORDS_KEY);
+}
+
+async function getRouteRecord(downloadId) {
+  const records = await getRouteRecords();
+  return records[String(downloadId)] || null;
+}
+
+async function removeRouteRecord(downloadId) {
+  await updateLocalMap(PENDING_ROUTE_RECORDS_KEY, (records) => {
+    delete records[String(downloadId)];
+  });
+}
+
+async function discardDownloadBookkeeping(downloadId) {
+  await removeRouteRecord(downloadId);
+  await removePendingNativeMove(downloadId);
+}
+
+async function finishDownload(downloadId) {
+  const record = await getRouteRecord(downloadId);
+  if (record && record.requiresNativeMove) {
+    const pendingMoves = await getPendingNativeMoves();
+    if (pendingMoves[String(downloadId)]) {
+      await completeNativeMove(downloadId);
+      return;
+    }
+    await removeRouteRecord(downloadId);
+    return;
+  }
+  if (record) {
+    await commitRouteRecord(downloadId);
+    return;
+  }
+  await completeNativeMove(downloadId);
+}
+
+async function commitRouteRecord(downloadId, finalFilename) {
+  const record = await getRouteRecord(downloadId);
+  if (!record || !record.recent) {
+    return;
+  }
+
+  const items = await downloadsSearch({ id: Number(downloadId) });
+  const item = items && items[0];
+  if (!item) {
+    return;
+  }
+  if (item.incognito || item.state === "interrupted") {
+    await removeRouteRecord(downloadId);
+    return;
+  }
+  if (item.state && item.state !== "complete") {
+    return;
+  }
+
+  const recent = Object.assign({}, record.recent);
+  if (finalFilename) {
+    recent.originalFilename = Core.sanitizeFilename(finalFilename);
+  }
+
+  await Store.updateSettings((settings) => {
+    if (!settings.keepHistory) {
+      settings.recentRoutes = [];
+      return;
+    }
+    const alreadyRecorded = (settings.recentRoutes || []).some((entry) => entry.id === recent.id);
+    if (alreadyRecorded) {
+      return;
+    }
+    settings.recentRoutes = [recent].concat(settings.recentRoutes || []).slice(0, settings.historyLimit || Core.DEFAULT_HISTORY_LIMIT);
+  });
+  await removeRouteRecord(downloadId);
+}
+
+async function recoverFinishedRouteRecords() {
+  const records = await getRouteRecords();
+  for (const downloadId of Object.keys(records)) {
+    const numericId = Number(downloadId);
+    if (!Number.isInteger(numericId)) {
+      await removeRouteRecord(downloadId);
+      continue;
+    }
+
+    const items = await downloadsSearch({ id: numericId });
+    const item = items && items[0];
+    if (!item || item.incognito || item.state === "interrupted") {
+      await discardDownloadBookkeeping(numericId);
+      continue;
+    }
+    if (item.state !== "complete") {
+      continue;
+    }
+
+    try {
+      if (records[downloadId].requiresNativeMove) {
+        await completeNativeMove(numericId);
+      } else {
+        await commitRouteRecord(numericId);
+      }
+    } catch (error) {
+      console.error("Tidy Downloads could not record a finished download", error);
+    }
+  }
 }
 
 async function getNativeMoveStatus() {
@@ -292,6 +435,7 @@ function recoverPendingNativeMoves() {
   }
 
   recoveryPromise = (async () => {
+    await recoverFinishedRouteRecords();
     const pendingMoves = await getPendingNativeMoves();
     for (const downloadId of Object.keys(pendingMoves)) {
       const numericId = Number(downloadId);
@@ -303,7 +447,7 @@ function recoverPendingNativeMoves() {
       const items = await downloadsSearch({ id: numericId });
       const item = items && items[0];
       if (!item || item.incognito || item.state === "interrupted") {
-        await removePendingNativeMove(numericId);
+        await discardDownloadBookkeeping(numericId);
         continue;
       }
       if (item.state === "complete") {

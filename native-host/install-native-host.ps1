@@ -8,13 +8,27 @@ $ErrorActionPreference = "Stop"
 
 $hostName = "com.tidy_downloads.host"
 $hostRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$launcherPath = Join-Path $hostRoot "tidy-downloads-host.cmd"
-$generatedRoot = Join-Path $hostRoot "generated"
-$manifestPath = Join-Path $generatedRoot "$hostName.json"
+$sourceLauncher = Join-Path $hostRoot "tidy-downloads-host.cmd"
+$sourceScript = Join-Path $hostRoot "tidy-downloads-host.ps1"
 
-if (-not (Test-Path -LiteralPath $launcherPath)) {
-  throw "Missing native host launcher: $launcherPath"
+if (-not (Test-Path -LiteralPath $sourceLauncher)) {
+  throw "Missing native host launcher: $sourceLauncher"
 }
+if (-not (Test-Path -LiteralPath $sourceScript)) {
+  throw "Missing native host script: $sourceScript"
+}
+if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+  throw "LOCALAPPDATA is not set, so the helper cannot be installed."
+}
+
+$installRoot = Join-Path $env:LOCALAPPDATA "Tidy Downloads\native-host"
+New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
+Copy-Item -LiteralPath $sourceScript -Destination (Join-Path $installRoot "tidy-downloads-host.ps1") -Force
+Copy-Item -LiteralPath $sourceLauncher -Destination (Join-Path $installRoot "tidy-downloads-host.cmd") -Force
+
+$launcherPath = Join-Path $installRoot "tidy-downloads-host.cmd"
+$generatedRoot = Join-Path $installRoot "generated"
+$manifestPath = Join-Path $generatedRoot "$hostName.json"
 
 New-Item -ItemType Directory -Force -Path $generatedRoot | Out-Null
 
@@ -26,10 +40,14 @@ $manifest = [ordered]@{
   allowed_origins = @("chrome-extension://$ExtensionId/")
 }
 
-($manifest | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 4), $utf8NoBom)
 
 $registryKeys = @(
   "Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\$hostName",
+  "Software\BraveSoftware\Brave-Browser-Beta\NativeMessagingHosts\$hostName",
+  "Software\BraveSoftware\Brave-Browser-Dev\NativeMessagingHosts\$hostName",
+  "Software\BraveSoftware\Brave-Browser-Nightly\NativeMessagingHosts\$hostName",
   "Software\Google\Chrome\NativeMessagingHosts\$hostName",
   "Software\Chromium\NativeMessagingHosts\$hostName",
   "Software\Microsoft\Edge\NativeMessagingHosts\$hostName"

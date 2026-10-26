@@ -377,4 +377,103 @@ assert.equal(oversizedRuleImport.settings, null);
 assert.match(oversizedRuleImport.errors.join(" "), /at most 500 folder rules/);
 assert.equal(Core.MAX_SETTINGS_IMPORT_BYTES, 1024 * 1024);
 
+const cdnDownload = download({
+  filename: "SkyUI.7z",
+  finalUrl: "https://files.nexusmods.com/cdn/1704/12604/SkyUI.7z",
+  url: "https://files.nexusmods.com/cdn/1704/12604/SkyUI.7z",
+  referrer: "https://www.nexusmods.com/",
+  mime: "application/octet-stream"
+});
+assert.equal(Core.extractNexusGameSlugFromUrl(cdnDownload.finalUrl), "");
+assert.equal(Core.extractNexusGameSlugFromUrl("https://files.nexusmods.com/1704/12604/SkyUI.7z"), "");
+assert.equal(Core.getDownloadSourceContext(cdnDownload).gameSlug, "");
+assert.equal(Core.getDownloadSourceContext(cdnDownload).gameName, "");
+assert.equal(
+  Core.extractNexusGameSlugFromUrl("https://files.nexusmods.com/cdn/file.zip?game_domain_name=skyrimspecialedition"),
+  "skyrimspecialedition"
+);
+
+const presetSettings = Core.normalizeSettings({
+  enabled: true,
+  askOnFirstDownload: true,
+  askOnlyWhenNoRuleMatches: true,
+  fileTypeRules: Core.PRESET_FILE_TYPE_RULES
+});
+assert.equal(Core.friendlyGameName("monsterhunterrise"), "Monster Hunter Rise");
+const splitCandidates = Array.from(Core.getExtensionCandidates("SkyUI.7z.001"));
+assert.equal(splitCandidates.includes("7z"), true);
+assert.equal(splitCandidates.includes("7z.001"), true);
+assert.equal(Array.from(Core.getExtensionCandidates("mod.r00")).includes("rar"), true);
+
+const splitDownload = download({
+  filename: "SkyUI.7z.001",
+  finalUrl: "https://www.nexusmods.com/skyrimspecialedition/mods/12604",
+  referrer: "https://www.nexusmods.com/skyrimspecialedition/mods/12604",
+  mime: "application/octet-stream"
+});
+route = Core.computeRoute(presetSettings, splitDownload);
+assert.equal(route.folder, "Compressed Files");
+assert.equal(route.ruleBroad, true);
+
+route = Core.computeRoute(presetSettings, cdnDownload);
+assert.equal(route.folder, "Compressed Files");
+assert.equal(route.ruleBroad, true);
+assert.equal(Core.shouldPromptForRoute(presetSettings, cdnDownload, route).shouldPrompt, true);
+
+const scriptDownload = download({
+  filename: "modlist.js",
+  finalUrl: "https://example.com/modlist.js",
+  referrer: "https://example.com/modlist.js",
+  mime: "text/javascript"
+});
+route = Core.computeRoute(presetSettings, scriptDownload);
+assert.equal(route.routed, false, "text/javascript must not use the Documents preset");
+
+const legacyDocuments = Core.normalizeSettings({
+  fileTypeRules: [{
+    name: "Documents",
+    extensions: ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md"],
+    mimePatterns: ["application/pdf", "text/*"],
+    folder: "Documents",
+    enabled: true
+  }]
+});
+assert.equal(legacyDocuments.fileTypeRules[0].mimePatterns.includes("text/*"), false);
+route = Core.computeRoute(legacyDocuments, scriptDownload);
+assert.equal(route.routed, false, "a saved Documents preset drops the text/* wildcard");
+
+const textDownload = download({
+  filename: "readme.txt",
+  finalUrl: "https://example.com/readme.txt",
+  referrer: "https://example.com/readme.txt",
+  mime: "text/plain"
+});
+route = Core.computeRoute(presetSettings, textDownload);
+assert.equal(route.folder, "Documents");
+
+const customArchiveSettings = Core.normalizeSettings({
+  enabled: true,
+  askOnFirstDownload: true,
+  askOnlyWhenNoRuleMatches: true,
+  fileTypeRules: [{
+    name: "My archives",
+    extensions: ["7z", "zip", "rar"],
+    folder: "Mods/Archives",
+    enabled: true
+  }]
+});
+route = Core.computeRoute(customArchiveSettings, cdnDownload);
+assert.equal(route.ruleBroad, false);
+assert.equal(Core.shouldPromptForRoute(customArchiveSettings, cdnDownload, route).shouldPrompt, false);
+
+const riseDownload = download({
+  filename: "mod.zip",
+  finalUrl: "https://files.nexusmods.com/cdn/mod.zip",
+  url: "https://files.nexusmods.com/cdn/mod.zip",
+  referrer: "https://www.nexusmods.com/monsterhunterrise/mods/1",
+  mime: "application/zip"
+});
+route = Core.computeRoute(nexusGameSettings, riseDownload);
+assert.equal(route.folder, "Mods/Nexus Mods/Monster Hunter Rise");
+
 console.log("core tests passed");

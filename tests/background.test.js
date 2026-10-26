@@ -151,14 +151,23 @@ function siteSettings(folder) {
 }
 
 async function run() {
-  const normalRelative = createHarness({ settings: siteSettings("Websites/Example") });
+  const finishedDownload = makeDownload({ id: 10, state: "complete" });
+  const normalRelative = createHarness({
+    settings: siteSettings("Websites/Example"),
+    downloadItems: { "10": finishedDownload }
+  });
   const normalRelativeSuggestions = [];
-  await normalRelative.context.handleDownload(makeDownload({ id: 10 }), (suggestion) => {
+  await normalRelative.context.handleDownload(finishedDownload, (suggestion) => {
     normalRelativeSuggestions.push(suggestion);
   });
   assert.equal(normalRelativeSuggestions[0].filename, "Websites/Example/file.zip");
-  assert.equal(normalRelative.settingsWrites, 1);
-  assert.equal(normalRelative.settings.recentRoutes.length, 1, "normal downloads should still update local activity");
+  assert.equal(normalRelative.settingsWrites, 0, "activity is not written while the download is still being named");
+  assert.equal(normalRelative.settings.recentRoutes.length, 0);
+  assert.ok(normalRelative.localData.pendingRouteRecords["10"], "a finished download needs a stored route");
+  await normalRelative.context.finishDownload(10);
+  assert.equal(normalRelative.settings.recentRoutes.length, 1, "normal downloads should update local activity after completion");
+  assert.equal(normalRelative.settings.recentRoutes[0].folder, "Websites/Example");
+  assert.equal(normalRelative.localData.pendingRouteRecords["10"], undefined);
 
   const normalPrompt = createHarness({ settings: { enabled: true, askOnFirstDownload: true } });
   await normalPrompt.context.handleDownload(makeDownload({
@@ -252,6 +261,54 @@ async function run() {
   await assert.rejects(() => failedNormalMove.context.completeNativeMove(6), /Helper unavailable/);
   assert.equal(failedNormalMove.localData.pendingNativeMoves["6"].attempts, 1);
   assert.match(failedNormalMove.localData.pendingNativeMoves["6"].lastError, /Helper unavailable/);
+
+  const presetPrompt = createHarness({
+    settings: {
+      enabled: true,
+      askOnFirstDownload: true,
+      askOnlyWhenNoRuleMatches: true,
+      fileTypeRules: Core.PRESET_FILE_TYPE_RULES
+    }
+  });
+  await presetPrompt.context.handleDownload(makeDownload({
+    id: 14,
+    filename: "SkyUI.7z",
+    finalUrl: "https://files.nexusmods.com/cdn/SkyUI.7z",
+    url: "https://files.nexusmods.com/cdn/SkyUI.7z",
+    referrer: "https://www.nexusmods.com/",
+    mime: "application/zip"
+  }), () => {});
+  assert.equal(presetPrompt.openedWindows.length, 1, "suggested archive folders should still ask about a new website");
+  assert.equal(presetPrompt.settings.recentRoutes.length, 0);
+
+  const interrupted = createHarness({ settings: siteSettings("D:\\Organized") });
+  await interrupted.context.handleDownload(makeDownload({ id: 12, state: "in_progress" }), () => {});
+  assert.ok(interrupted.localData.pendingNativeMoves["12"]);
+  assert.ok(interrupted.localData.pendingRouteRecords["12"]);
+  await interrupted.context.discardDownloadBookkeeping(12);
+  assert.equal(interrupted.localData.pendingNativeMoves["12"], undefined);
+  assert.equal(interrupted.localData.pendingRouteRecords["12"], undefined);
+  assert.equal(interrupted.settings.recentRoutes.length, 0);
+
+  const moved = createHarness({
+    settings: siteSettings("D:\\Organized"),
+    downloadItems: {
+      "13": makeDownload({
+        id: 13,
+        filename: "C:\\Users\\Tester\\Downloads\\Tidy Downloads Staging\\file.zip",
+        state: "complete"
+      })
+    },
+    nativeResponse: { ok: true, path: "D:\\Organized\\file (1).zip" }
+  });
+  await moved.context.handleDownload(makeDownload({ id: 13 }), () => {});
+  assert.equal(moved.settings.recentRoutes.length, 0);
+  await moved.context.completeNativeMove(13);
+  assert.equal(moved.settings.recentRoutes.length, 1);
+  assert.equal(moved.settings.recentRoutes[0].originalFilename, "file (1).zip");
+  assert.equal(moved.settings.recentRoutes[0].folder, "D:\\Organized");
+  assert.equal(moved.localData.pendingNativeMoves["13"], undefined);
+  assert.equal(moved.localData.pendingRouteRecords["13"], undefined);
 
   console.log("background privacy and native-move tests passed");
 }

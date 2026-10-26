@@ -210,7 +210,7 @@
           </div>
           <div class="toggle-row">
             <label>
-              <span><strong>Only ask when nothing else matches</strong><small>Stay quiet if a file type folder already applies.</small></span>
+              <span><strong>Only ask when nothing else matches</strong><small>Stay quiet when a website folder, or a file type folder you changed, already applies.</small></span>
               <input id="ask-only-unmatched" type="checkbox">
             </label>
           </div>
@@ -228,9 +228,10 @@
             If the name already exists
             <select id="conflict-action">
               <option value="uniquify">Keep both files</option>
-              <option value="prompt">Ask me</option>
+              <option value="prompt">Ask me inside Downloads</option>
               <option value="overwrite">Replace the old file</option>
             </select>
+            <span class="field-note">A full path outside Downloads keeps both files. Replace still replaces the file at that path.</span>
           </label>
         </section>
 

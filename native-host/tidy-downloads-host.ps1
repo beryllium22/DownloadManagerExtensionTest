@@ -129,14 +129,45 @@ function Move-Download {
 
   $fileName = [IO.Path]::GetFileName($sourcePath)
   $destination = Join-Path $targetFolder $fileName
+  $replaceExisting = [string]$Message.conflictAction -eq "overwrite" -and (Test-Path -LiteralPath $destination)
 
-  if ([string]$Message.conflictAction -eq "overwrite" -and (Test-Path -LiteralPath $destination)) {
-    Remove-Item -LiteralPath $destination -Force
-  } else {
-    $destination = Get-UniquePath $destination
+  # "prompt" is Chrome's dialog for the staging name. This helper has no UI,
+  # so a full path keeps both files unless the user chose overwrite.
+  if (-not $replaceExisting) {
+    if (Test-Path -LiteralPath $destination) {
+      $destination = Get-UniquePath $destination
+    }
+    Move-Item -LiteralPath $sourcePath -Destination $destination
+    return @{
+      ok = $true
+      path = $destination
+    }
   }
 
-  Move-Item -LiteralPath $sourcePath -Destination $destination
+  # Land the new file beside the old one before the old one is moved aside.
+  # A failed copy then leaves the existing destination untouched.
+  $token = [guid]::NewGuid().ToString("N")
+  $incoming = Join-Path $targetFolder (".tidy-incoming-$token")
+  $backup = Join-Path $targetFolder (".tidy-backup-$token")
+  Move-Item -LiteralPath $sourcePath -Destination $incoming
+  try {
+    Move-Item -LiteralPath $destination -Destination $backup
+    try {
+      Move-Item -LiteralPath $incoming -Destination $destination
+    } catch {
+      if (Test-Path -LiteralPath $backup) {
+        Move-Item -LiteralPath $backup -Destination $destination
+      }
+      throw
+    }
+    Remove-Item -LiteralPath $backup -Force
+  } catch {
+    if (Test-Path -LiteralPath $incoming) {
+      Move-Item -LiteralPath $incoming -Destination $sourcePath
+    }
+    throw
+  }
+
   return @{
     ok = $true
     path = $destination

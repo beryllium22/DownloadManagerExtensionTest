@@ -18,7 +18,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\native-host\install-native-host.p
 5. Restart Brave.
 6. Open Tidy Downloads settings and choose `Check Helper`.
 
-The installer writes user-level registry keys under `HKCU`, so it does not need administrator access.
+The installer copies the helper to `%LOCALAPPDATA%\Tidy Downloads\native-host` and writes user-level registry keys under `HKCU`, so it does not need administrator access. Moving this project folder later does not disconnect the helper. The registry entries cover Brave stable, Beta, Dev, and Nightly, plus Chrome, Chromium, and Edge.
 
 ## Uninstall
 
