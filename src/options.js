@@ -54,8 +54,6 @@
       "overview-health",
       "overview-title",
       "overview-summary",
-      "site-priority-label",
-      "file-priority-label",
       "site-rule-count",
       "file-rule-count",
       "prompt-count",
@@ -292,9 +290,6 @@
     els["history-limit"].closest("label").classList.toggle("field-disabled", !state.settings.keepHistory);
     els["route-priority"].value = state.settings.routePriority;
     els["conflict-action"].value = state.settings.conflictAction;
-    const siteFirst = state.settings.routePriority !== "file-type-first";
-    els["site-priority-label"].textContent = siteFirst ? "Checked first" : "After file types";
-    els["file-priority-label"].textContent = siteFirst ? "When no website rule matches" : "Checked first";
 
     const validationErrors = Core.validateSettings(state.settings);
     const activeSiteCount = state.settings.siteRules.filter((rule) => rule.enabled).length;
@@ -302,24 +297,26 @@
     const activeRuleCount = activeSiteCount + activeFileCount;
 
     if (validationErrors.length) {
-      els["overview-title"].textContent = "A few rules need attention";
-      els["overview-summary"].textContent = "Review the highlighted rules before relying on automatic sorting.";
-      els["overview-health"].textContent = `${validationErrors.length} fix needed${validationErrors.length === 1 ? "" : "s"}`;
+      els["overview-title"].textContent = "A folder needs a fix";
+      els["overview-summary"].textContent = "Open Websites or File types and edit the rule with an invalid folder or match.";
+      els["overview-health"].textContent = validationErrors.length === 1 ? "1 fix" : `${validationErrors.length} fixes`;
       els["overview-health"].className = "pill warning";
     } else if (!state.settings.enabled) {
-      els["overview-title"].textContent = "Automatic sorting is paused";
-      els["overview-summary"].textContent = `${activeRuleCount} saved rule${activeRuleCount === 1 ? " is" : "s are"} ready whenever you turn sorting back on.`;
+      els["overview-title"].textContent = "Sorting is paused";
+      els["overview-summary"].textContent = activeRuleCount
+        ? `${activeRuleCount} saved folder${activeRuleCount === 1 ? " stays" : "s stay"} ready. New downloads use the normal Downloads folder until you turn sorting back on.`
+        : "New downloads use the normal Downloads folder until you turn sorting back on.";
       els["overview-health"].textContent = "Paused";
       els["overview-health"].className = "pill warning";
     } else if (!activeRuleCount) {
-      els["overview-title"].textContent = "Let's organize your first download";
-      els["overview-summary"].textContent = "Add the suggested folders below, then customize any website that needs its own place.";
-      els["overview-health"].textContent = "Setup needed";
-      els["overview-health"].className = "pill warning";
+      els["overview-title"].textContent = "No folders yet";
+      els["overview-summary"].textContent = "Add a website folder, or start with the suggested file types below.";
+      els["overview-health"].textContent = "Empty";
+      els["overview-health"].className = "pill";
     } else {
-      els["overview-title"].textContent = "Your downloads are being organized";
-      els["overview-summary"].textContent = `${activeSiteCount} website rule${activeSiteCount === 1 ? "" : "s"} and ${activeFileCount} file type rule${activeFileCount === 1 ? "" : "s"} are active.`;
-      els["overview-health"].textContent = "Sorting on";
+      els["overview-title"].textContent = "Sorting is on";
+      els["overview-summary"].textContent = `${activeSiteCount} website folder${activeSiteCount === 1 ? "" : "s"} and ${activeFileCount} file type folder${activeFileCount === 1 ? "" : "s"} are in use.`;
+      els["overview-health"].textContent = "On";
       els["overview-health"].className = "pill success";
     }
 
@@ -346,7 +343,7 @@
       button.type = "button";
       button.className = "preset-button";
       button.disabled = exists;
-      button.innerHTML = `<strong>${escapeHtml(preset.name)}</strong><span class="muted">${exists ? "Already added" : `Save to ${escapeHtml(preset.folder)}`}</span><span class="preset-state-icon" aria-hidden="true">${exists ? "✓" : "+"}</span>`;
+      button.innerHTML = `<strong>${escapeHtml(preset.name)}</strong><span class="muted">${exists ? "Added" : escapeHtml(preset.folder)}</span><span class="preset-state-icon" aria-hidden="true">${exists ? "✓" : "+"}</span>`;
       button.addEventListener("click", async () => {
         button.disabled = true;
         try {
@@ -363,8 +360,8 @@
     });
     els["apply-recommended-presets"].disabled = availableCount === 0;
     els["apply-recommended-presets"].textContent = availableCount === 0
-      ? "Suggested Folders Ready"
-      : "Add Suggested Folders";
+      ? "Suggested folders added"
+      : "Add suggested folders";
   }
 
   async function addPreset(preset) {
@@ -396,7 +393,7 @@
       render();
     } catch (error) {
       els["apply-recommended-presets"].disabled = false;
-      els["apply-recommended-presets"].textContent = "Add Suggested Folders";
+      els["apply-recommended-presets"].textContent = "Add suggested folders";
       setStatus(els["preset-status"], error.message || "Could not add the suggested folders.", "error");
     }
   }
@@ -416,7 +413,7 @@
     if (!rules.length) {
       if (filter) {
         els["site-rules-list"].append(emptyState(
-          "No matching website rules",
+          "No matching websites",
           "Try a different website or folder name.",
           "Clear Search",
           () => {
@@ -427,9 +424,9 @@
         ));
       } else {
         els["site-rules-list"].append(emptyState(
-          "No website rules yet",
-          "Create one when a website should always save to a specific place.",
-          "Create Website Rule",
+          "No website folders yet",
+          "Add one when a website should always save to its own folder.",
+          "New website folder",
           () => openSiteRuleDialog()
         ));
       }
@@ -446,25 +443,26 @@
       ? "All file types"
       : `${rule.extensionMode === "only" ? "Only" : "Except"} ${rule.extensions.map((extension) => `.${extension}`).join(", ")}`;
     const sourceLabel = rule.sourceGame ? friendlyGameLabel(rule.sourceGame) : "All site downloads";
-    const sourceDisplay = rule.sourceGame
-      ? `${rule.hostPattern} · ${sourceLabel}`
-      : rule.hostPattern;
+    const whenLabel = [
+      rule.sourceGame ? sourceLabel : "Every download",
+      rule.includeSubdomains ? "related addresses" : "this address only",
+      filterLabel
+    ].join(" · ");
     card.innerHTML = `
       <div class="rule-card-header">
         <div class="rule-title">
           <h3>${escapeHtml(rule.hostPattern)}</h3>
-          ${rule.sourceGame ? `<span class="pill">${escapeHtml(sourceLabel)}</span>` : ""}
-          <span class="pill ${rule.enabled ? "success" : "warning"}">${rule.enabled ? "Active" : "Paused"}</span>
+          <span class="pill ${rule.enabled ? "success" : "warning"}">${rule.enabled ? "On" : "Off"}</span>
         </div>
         <div class="row-actions">
-          <button type="button" data-action="toggle" aria-label="${rule.enabled ? "Pause" : "Activate"} ${escapeHtml(rule.hostPattern)} rule">${rule.enabled ? "Pause" : "Activate"}</button>
-          <button type="button" data-action="edit" aria-label="Edit ${escapeHtml(rule.hostPattern)} rule">Edit</button>
+          <button type="button" data-action="toggle" aria-label="${rule.enabled ? "Pause" : "Turn on"} ${escapeHtml(rule.hostPattern)}">${rule.enabled ? "Pause" : "Turn on"}</button>
+          <button type="button" data-action="edit" aria-label="Edit ${escapeHtml(rule.hostPattern)}">Edit</button>
         </div>
       </div>
       <div class="rule-route">
         <div class="rule-endpoint">
-          <span class="route-overline">From</span>
-          <strong title="${escapeHtml(sourceDisplay)}">${escapeHtml(sourceDisplay)}</strong>
+          <span class="route-overline">When</span>
+          <strong title="${escapeHtml(whenLabel)}">${escapeHtml(whenLabel)}</strong>
         </div>
         <span class="route-arrow" aria-hidden="true">→</span>
         <div class="rule-endpoint destination">
@@ -472,11 +470,7 @@
           <strong title="${escapeHtml(rule.folder)}">${escapeHtml(rule.folder)}</strong>
         </div>
       </div>
-      <div class="rule-details">
-        <span class="pill">${rule.includeSubdomains ? "Related addresses included" : "Exact address only"}</span>
-        <span class="pill">${escapeHtml(filterLabel)}</span>
-        ${rule.notes ? `<span class="rule-note"><strong>Note:</strong> ${escapeHtml(rule.notes)}</span>` : ""}
-      </div>
+      ${rule.notes ? `<p class="rule-note">${escapeHtml(rule.notes)}</p>` : ""}
     `;
 
     card.querySelector('[data-action="edit"]').addEventListener("click", () => openSiteRuleDialog(rule));
@@ -500,7 +494,7 @@
     if (!rules.length) {
       if (filter) {
         els["file-rules-list"].append(emptyState(
-          "No matching file type rules",
+          "No matching file types",
           "Try a different rule name, file ending, or folder.",
           "Clear Search",
           () => {
@@ -511,9 +505,9 @@
         ));
       } else {
         els["file-rules-list"].append(emptyState(
-          "No file type rules yet",
-          "Create one for a format such as .mp4, .zip, or .pdf.",
-          "Create File Type Rule",
+          "No file type folders yet",
+          "Add one for a format such as .mp4, .zip, or .pdf.",
+          "New file type folder",
           () => openFileRuleDialog()
         ));
       }
@@ -529,20 +523,21 @@
     const extensionLabel = rule.extensions.length
       ? rule.extensions.map((extension) => `.${extension}`).join(", ")
       : rule.mimePatterns.join(", ");
+    const mimeNote = rule.mimePatterns.length ? `Also matches ${rule.mimePatterns.join(", ")}` : "";
     card.innerHTML = `
       <div class="rule-card-header">
         <div class="rule-title">
           <h3>${escapeHtml(rule.name)}</h3>
-          <span class="pill ${rule.enabled ? "success" : "warning"}">${rule.enabled ? "Active" : "Paused"}</span>
+          <span class="pill ${rule.enabled ? "success" : "warning"}">${rule.enabled ? "On" : "Off"}</span>
         </div>
         <div class="row-actions">
-          <button type="button" data-action="toggle" aria-label="${rule.enabled ? "Pause" : "Activate"} ${escapeHtml(rule.name)} rule">${rule.enabled ? "Pause" : "Activate"}</button>
-          <button type="button" data-action="edit" aria-label="Edit ${escapeHtml(rule.name)} rule">Edit</button>
+          <button type="button" data-action="toggle" aria-label="${rule.enabled ? "Pause" : "Turn on"} ${escapeHtml(rule.name)}">${rule.enabled ? "Pause" : "Turn on"}</button>
+          <button type="button" data-action="edit" aria-label="Edit ${escapeHtml(rule.name)}">Edit</button>
         </div>
       </div>
       <div class="rule-route">
         <div class="rule-endpoint">
-          <span class="route-overline">Matches</span>
+          <span class="route-overline">When</span>
           <strong title="${escapeHtml(extensionLabel)}">${escapeHtml(extensionLabel || "Content type pattern")}</strong>
         </div>
         <span class="route-arrow" aria-hidden="true">→</span>
@@ -551,10 +546,7 @@
           <strong title="${escapeHtml(rule.folder)}">${escapeHtml(rule.folder)}</strong>
         </div>
       </div>
-      <div class="rule-details">
-        ${rule.mimePatterns.length ? `<span class="pill">Also matches ${escapeHtml(rule.mimePatterns.join(", "))}</span>` : ""}
-        ${rule.notes ? `<span class="rule-note"><strong>Note:</strong> ${escapeHtml(rule.notes)}</span>` : ""}
-      </div>
+      ${mimeNote || rule.notes ? `<p class="rule-note">${escapeHtml([mimeNote, rule.notes].filter(Boolean).join(" · "))}</p>` : ""}
     `;
 
     card.querySelector('[data-action="edit"]').addEventListener("click", () => openFileRuleDialog(rule));
@@ -585,7 +577,7 @@
         <td data-label="Website">${escapeHtml(host)}</td>
         <td data-label="Choice">${escapeHtml(promptStateLabel(entry.state))}</td>
         <td data-label="Last seen">${escapeHtml(formatDate(entry.lastSeenAt))}</td>
-        <td data-label="Action"><button type="button" aria-label="Ask about ${escapeHtml(host)} again">Ask Again</button></td>
+        <td data-label="Action"><button type="button" aria-label="Ask about ${escapeHtml(host)} again">Ask again</button></td>
       `;
       row.querySelector("button").addEventListener("click", () => resetPrompt(host));
       tbody.append(row);
@@ -602,9 +594,9 @@
       els["history-list"].append(state.settings.keepHistory
         ? emptyState("No activity yet", "New downloads will appear here after Tidy Downloads routes them.")
         : emptyState(
-          "Activity is turned off",
-          "Turn it on under Privacy if you want a local list of recent destinations.",
-          "Open Privacy",
+          "Activity is off",
+          "Turn on the local list under Behavior if you want to see recent destinations.",
+          "Open Behavior",
           () => setActiveTab("prompts", true)
         ));
       return;
@@ -646,7 +638,7 @@
     }
 
     els["quick-site-save"].disabled = true;
-    els["quick-site-save"].textContent = "Saving...";
+    els["quick-site-save"].textContent = "Saving…";
     try {
       const result = await Store.updateSettings((settings) => {
         const upserted = Core.upsertSiteRule(settings.siteRules, {
@@ -673,13 +665,15 @@
       state.settings = result.settings;
       els["quick-site-folder"].value = "";
       state.quickFolderEdited = false;
-      setStatus(els["quick-site-status"], result.result ? "Website folder saved." : "Website folder updated.", "ok");
+      const savedMessage = result.result ? "Website folder saved." : "Website folder updated.";
+      setStatus(els["quick-site-status"], savedMessage, "ok");
+      showToast(savedMessage, "ok");
       render();
     } catch (error) {
       setStatus(els["quick-site-status"], error.message || "Could not save this website folder.", "error");
     } finally {
       els["quick-site-save"].disabled = false;
-      els["quick-site-save"].textContent = "Save Website Folder";
+      els["quick-site-save"].textContent = "Save website folder";
     }
   }
 
@@ -702,8 +696,8 @@
     const value = Core.normalizeSiteRule(rule || { enabled: true, includeSubdomains: true });
     state.editingKind = "site";
     state.editingId = rule && rule.id ? rule.id : "";
-    els["rule-dialog-title"].textContent = state.editingId ? "Edit Website Rule" : "New Website Rule";
-    els["rule-dialog-description"].textContent = "Choose which website downloads should match and where they should save.";
+    els["rule-dialog-title"].textContent = state.editingId ? "Edit website folder" : "New website folder";
+    els["rule-dialog-description"].textContent = "Downloads from this website save in the folder you choose.";
     els["rule-kind"].value = "site";
     els["rule-id"].value = state.editingId;
     els["site-rule-fields"].hidden = false;
@@ -721,7 +715,7 @@
     els["delete-rule"].hidden = !state.editingId;
     els["delete-rule"].textContent = "Delete";
     els["delete-rule"].dataset.confirming = "false";
-    els["save-rule"].textContent = "Save Rule";
+    els["save-rule"].textContent = "Save";
     setStatus(els["rule-form-status"], "", "");
     updateSiteExtensionField();
     updateRulePreview();
@@ -733,8 +727,8 @@
     const value = Core.normalizeFileTypeRule(rule || { enabled: true, name: "", folder: "" });
     state.editingKind = "file";
     state.editingId = rule && rule.id ? rule.id : "";
-    els["rule-dialog-title"].textContent = state.editingId ? "Edit File Type Rule" : "New File Type Rule";
-    els["rule-dialog-description"].textContent = "Choose which file endings should match and where they should save.";
+    els["rule-dialog-title"].textContent = state.editingId ? "Edit file type folder" : "New file type folder";
+    els["rule-dialog-description"].textContent = "Files with these endings save in the folder you choose.";
     els["rule-kind"].value = "file";
     els["rule-id"].value = state.editingId;
     els["site-rule-fields"].hidden = true;
@@ -749,7 +743,7 @@
     els["delete-rule"].hidden = !state.editingId;
     els["delete-rule"].textContent = "Delete";
     els["delete-rule"].dataset.confirming = "false";
-    els["save-rule"].textContent = "Save Rule";
+    els["save-rule"].textContent = "Save";
     setStatus(els["rule-form-status"], "", "");
     updateRulePreview();
     showDialog();
@@ -937,12 +931,12 @@
 
       closeRuleDialog();
       render();
-      showToast(kind === "site" ? "Website rule saved." : "File type rule saved.", "ok");
+      showToast(kind === "site" ? "Website folder saved." : "File type folder saved.", "ok");
     } catch (error) {
       setStatus(els["rule-form-status"], error.message || "Could not save this folder rule.", "error");
     } finally {
       els["save-rule"].disabled = false;
-      els["save-rule"].textContent = "Save Rule";
+      els["save-rule"].textContent = "Save";
     }
   }
 

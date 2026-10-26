@@ -133,7 +133,7 @@
     } catch (error) {
       setStatus(els["site-status"], error.message || "Could not save this website folder.", "error");
       els["save-site-rule"].disabled = false;
-      els["save-site-rule"].textContent = "Use This Folder";
+      els["save-site-rule"].textContent = "Use this folder";
     }
   }
 
@@ -172,7 +172,7 @@
     } catch (error) {
       setStatus(els["type-status"], error.message || "Could not save this file type folder.", "error");
       els["save-file-rule"].disabled = false;
-      els["save-file-rule"].textContent = "Use This Folder For This File Type";
+      els["save-file-rule"].textContent = "Use this folder for this file type";
     }
   }
 
@@ -189,7 +189,7 @@
     } catch (error) {
       setStatus(els["site-status"], error.message || "Could not remember this choice.", "error");
       els["keep-default"].disabled = false;
-      els["keep-default"].textContent = "Not Now";
+      els["keep-default"].textContent = "Not now";
     }
   }
 
