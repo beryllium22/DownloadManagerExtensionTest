@@ -1108,10 +1108,15 @@ dialog::backdrop { background: rgba(17, 17, 17, 0.46); }
 .restore-dialog-footer > .muted { font-size: 12px; }
 
 .popup-body {
+  position: relative;
   width: 380px;
   min-height: 0;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, var(--bg)) 0, var(--bg) 168px);
+}
+
+.popup-body::before {
+  position: absolute;
 }
 
 .popup-shell {
