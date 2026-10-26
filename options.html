@@ -194,6 +194,7 @@
       </section>
 
       <section id="prompts" class="tab-panel" role="tabpanel" aria-labelledby="tab-prompts" hidden>
+        <div class="behavior-grid">
         <section class="section page-section">
           <div class="section-header">
             <div>
@@ -215,6 +216,7 @@
           </div>
         </section>
 
+        <div class="behavior-stack">
         <section class="section">
           <div class="section-header">
             <div>
@@ -230,17 +232,6 @@
               <option value="overwrite">Replace the old file</option>
             </select>
           </label>
-        </section>
-
-        <section class="section">
-          <div class="section-header">
-            <div>
-              <h2>Remembered answers</h2>
-              <p class="muted">Sites you already answered. Ask again if you want a new chance to choose a folder.</p>
-            </div>
-            <button id="clear-prompts" type="button">Forget all answers</button>
-          </div>
-          <div id="prompt-list"></div>
         </section>
 
         <section class="section">
@@ -265,6 +256,19 @@
             </select>
           </label>
         </section>
+        </div>
+
+        <section class="section behavior-wide">
+          <div class="section-header">
+            <div>
+              <h2>Remembered answers</h2>
+              <p class="muted">Sites you already answered. Ask again if you want a new chance to choose a folder.</p>
+            </div>
+            <button id="clear-prompts" type="button">Forget all answers</button>
+          </div>
+          <div id="prompt-list"></div>
+        </section>
+        </div>
       </section>
 
       <section id="history" class="tab-panel" role="tabpanel" aria-labelledby="tab-history" hidden>
