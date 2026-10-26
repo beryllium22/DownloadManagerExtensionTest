@@ -268,7 +268,7 @@
         pendingText = `${count} ${noun} ${waiting} still waiting to move. ${failedCount} ${failedCount === 1 ? "needs" : "need"} the computer helper.`;
       }
       els["popup-pending"].hidden = false;
-      els["popup-pending"].className = failedCount ? "status error" : "status";
+      els["popup-pending"].className = failedCount ? "popup-pending error" : "popup-pending";
       els["popup-pending"].textContent = pendingText;
     } catch (_error) {
       els["popup-pending"].hidden = true;

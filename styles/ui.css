@@ -1110,13 +1110,14 @@ dialog::backdrop { background: rgba(17, 17, 17, 0.46); }
 .popup-body {
   width: 380px;
   min-height: 0;
-  background: var(--bg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, var(--bg)) 0, var(--bg) 168px);
 }
 
 .popup-shell {
   display: grid;
   gap: 8px;
-  padding: 10px 12px 12px;
+  padding: 12px;
 }
 
 .popup-topbar {
@@ -1130,13 +1131,21 @@ dialog::backdrop { background: rgba(17, 17, 17, 0.46); }
 
 .route-summary {
   display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
   border-radius: 14px;
-  background:
-    linear-gradient(155deg, var(--accent-soft), var(--panel) 68%);
+  background: var(--panel);
   box-shadow: var(--shadow-small);
+}
+
+.route-summary-main {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent) 18%, var(--panel)), var(--panel) 58%),
+    linear-gradient(90deg, var(--folder-soft), transparent 46%);
 }
 
 .route-summary-top {
@@ -1154,9 +1163,9 @@ dialog::backdrop { background: rgba(17, 17, 17, 0.46); }
 }
 
 #popup-current-route {
-  color: var(--text);
-  font-size: 20px;
-  font-weight: 600;
+  color: var(--folder);
+  font-size: 18px;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.25;
 }
@@ -1184,7 +1193,13 @@ dialog::backdrop { background: rgba(17, 17, 17, 0.46); }
   box-shadow: var(--shadow-small);
 }
 
-#popup-current-route strong { color: var(--folder); }
+.popup-shell .route-icon {
+  background: var(--folder);
+  color: var(--on-accent);
+  box-shadow: none;
+}
+
+#popup-current-route strong { color: inherit; }
 
 .route-icon svg { width: 20px; height: 20px; }
 
@@ -1193,11 +1208,27 @@ dialog::backdrop { background: rgba(17, 17, 17, 0.46); }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel);
-  box-shadow: var(--shadow-small);
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel-soft) 82%, var(--panel));
+}
+
+.popup-pending {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border));
+  border-radius: 10px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.popup-pending.error {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+  background: color-mix(in srgb, var(--danger) 12%, var(--panel));
+  color: var(--danger);
 }
 
 .sorting-control > div { display: grid; gap: 0; }

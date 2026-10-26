@@ -24,33 +24,34 @@
       </header>
 
       <section id="popup-route-summary" class="route-summary" aria-live="polite">
-        <div class="route-summary-top">
-          <p id="popup-host" class="muted">Checking this tab</p>
-          <span id="popup-route-label" class="pill">Ready</span>
-        </div>
-        <div class="route-destination">
-          <span class="route-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false">
-              <path d="M3.5 7.5h6l2 2h9v9h-17z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            </svg>
-          </span>
-          <div>
-            <span class="route-overline">Next download saves to</span>
-            <p id="popup-current-route"></p>
+        <div class="route-summary-main">
+          <div class="route-summary-top">
+            <p id="popup-host" class="muted">Checking this tab</p>
+            <span id="popup-route-label" class="pill">Ready</span>
+          </div>
+          <div class="route-destination">
+            <span class="route-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M3.5 7.5h6l2 2h9v9h-17z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <div>
+              <span class="route-overline">Next download saves to</span>
+              <p id="popup-current-route"></p>
+            </div>
           </div>
         </div>
-      </section>
-
-      <section class="sorting-control">
-        <div>
-          <strong>Sorting</strong>
-          <span id="popup-enabled-copy" class="muted">Loading</span>
+        <div class="sorting-control">
+          <div>
+            <strong>Sorting</strong>
+            <span id="popup-enabled-copy" class="muted">Loading</span>
+          </div>
+          <label class="switch-control">
+            <input id="popup-enabled" type="checkbox">
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="sr-only">Sort downloads automatically</span>
+          </label>
         </div>
-        <label class="switch-control">
-          <input id="popup-enabled" type="checkbox">
-          <span class="switch-track" aria-hidden="true"></span>
-          <span class="sr-only">Sort downloads automatically</span>
-        </label>
       </section>
 
       <details id="popup-site-editor" class="section disclosure-card">
@@ -85,7 +86,7 @@
         </div>
       </details>
 
-      <p id="popup-pending" class="status" role="status" hidden></p>
+      <p id="popup-pending" class="popup-pending" role="status" hidden></p>
       <p id="popup-status" class="status popup-status" role="status" aria-live="polite"></p>
     </main>
 
