@@ -14,6 +14,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  Store.ensureSettings().catch((error) => console.error("Tidy Downloads setup failed", error));
   installContextMenus();
   recoverPendingNativeMoves().catch((error) => console.error("Tidy Downloads recovery failed", error));
 });
@@ -73,7 +74,10 @@ async function handleDownload(downloadItem, suggest) {
     if (route.routed && route.suggestionFilename) {
       suggest({
         filename: route.suggestionFilename,
-        conflictAction: settings.conflictAction
+        // Full-path downloads are staged first. Keep both copies there so a
+        // second download cannot replace a file that is still waiting to move.
+        // The chosen action is applied to the real folder by the helper.
+        conflictAction: route.requiresNativeMove ? "uniquify" : settings.conflictAction
       });
     } else {
       suggest();
@@ -202,7 +206,30 @@ async function rememberPendingNativeMove(downloadId, route, settings) {
   });
 }
 
-async function completeNativeMove(downloadId) {
+const nativeMovesInFlight = new Map();
+
+function isStagingFile(filename) {
+  const parts = String(filename || "").split(/[/\\]/).filter(Boolean);
+  const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
+  return parent.toLowerCase() === Core.STAGING_FOLDER.toLowerCase();
+}
+
+function completeNativeMove(downloadId) {
+  const key = String(downloadId);
+  const existing = nativeMovesInFlight.get(key);
+  if (existing) {
+    return existing.then((status) => status === "waiting" ? completeNativeMove(downloadId) : status);
+  }
+  const run = completeNativeMoveOnce(downloadId).finally(() => {
+    if (nativeMovesInFlight.get(key) === run) {
+      nativeMovesInFlight.delete(key);
+    }
+  });
+  nativeMovesInFlight.set(key, run);
+  return run;
+}
+
+async function completeNativeMoveOnce(downloadId) {
   const pendingMoves = await getPendingNativeMoves();
   const pending = pendingMoves[String(downloadId)];
   if (!pending) {
@@ -218,6 +245,12 @@ async function completeNativeMove(downloadId) {
     return;
   }
   if (item.state && item.state !== "complete") {
+    return "waiting";
+  }
+  if (!isStagingFile(item.filename)) {
+    // The service worker can die after the move is recorded and before the
+    // staging name is accepted. The file is already in its normal folder.
+    await discardDownloadBookkeeping(downloadId);
     return;
   }
 

@@ -476,4 +476,134 @@ const riseDownload = download({
 route = Core.computeRoute(nexusGameSettings, riseDownload);
 assert.equal(route.folder, "Mods/Nexus Mods/Monster Hunter Rise");
 
+assert.equal(
+  Core.extractNexusGameSlugFromUrl("https://www.nexusmods.com/Core/Libs/Common/Widgets/DownloadPopUp?id=4387&game_id=1704"),
+  "skyrimspecialedition"
+);
+assert.equal(
+  Core.extractNexusGameSlugFromUrl("https://www.nexusmods.com/skyrimspecialedition/mods/1?game=fallout4"),
+  "skyrimspecialedition"
+);
+assert.equal(Core.extractNexusGameSlugFromUrl("https://www.nexusmods.com/collections/foo"), "");
+assert.equal(Core.extractNexusGameSlugFromUrl("https://www.nexusmods.com/search"), "");
+assert.equal(
+  Core.extractNexusGameSlugFromUrl("https://www.nexusmods.com/Core/Libs/Common/Widgets/DownloadPopUp?game_id=999999"),
+  ""
+);
+
+assert.equal(Core.friendlyGameName("dragonage"), "Dragon Age: Origins");
+assert.equal(Core.friendlyGameName("dragonageorigins"), "Dragon Age: Origins");
+assert.equal(Core.friendlyGameName("bladeandsorcery"), "Blade & Sorcery");
+assert.equal(Core.friendlyGameName("vermintide2"), "Warhammer: Vermintide 2");
+const originsDownload = download({
+  filename: "mod.7z",
+  referrer: "https://www.nexusmods.com/dragonage/mods/1",
+  finalUrl: "https://files.nexusmods.com/mod.7z"
+});
+assert.equal(Core.sourceGameMatches({ sourceGame: "Dragon Age: Origins" }, originsDownload), true);
+assert.equal(Core.sourceGameMatches({ sourceGame: "dragonageorigins" }, originsDownload), true);
+route = Core.computeRoute(nexusGameSettings, originsDownload);
+assert.equal(route.folder, "Mods/Nexus Mods/Dragon Age Origins");
+assert.equal(route.folder.includes(":"), false);
+
+const sorcererDownload = download({
+  filename: "mod.zip",
+  referrer: "https://www.nexusmods.com/bladeandsorcery/mods/4"
+});
+assert.equal(Core.sourceGameMatches({ sourceGame: "Blade & Sorcery" }, sorcererDownload), true);
+assert.equal(Core.sourceGameMatches({ sourceGame: "bladesandsorcery" }, sorcererDownload), true);
+
+const vermintideDownload = download({
+  filename: "mod.zip",
+  referrer: "https://www.nexusmods.com/vermintide2/mods/2"
+});
+assert.equal(Core.sourceGameMatches({ sourceGame: "Warhammer: Vermintide 2" }, vermintideDownload), true);
+
+route = Core.computeRoute(nexusGameSettings, download({
+  filename: "city.zip",
+  referrer: "https://www.nexusmods.com/citiesskylines/mods/9"
+}));
+assert.equal(route.folder, "Mods/Nexus Mods/Cities Skylines");
+
+route = Core.computeRoute(nexusGameSettings, download({
+  filename: "gate.zip",
+  referrer: "https://www.nexusmods.com/baldursgate3/mods/3"
+}));
+assert.equal(route.folder, "Mods/Nexus Mods/Baldur's Gate 3");
+
+route = Core.computeRoute(nexusGameSettings, download({
+  filename: "banner.zip",
+  referrer: "https://www.nexusmods.com/mountandblade2bannerlord/mods/8"
+}));
+assert.equal(route.folder, "Mods/Nexus Mods/Mount & Blade II Bannerlord");
+
+const popupDownload = download({
+  filename: "SkyUI.7z",
+  finalUrl: "https://files.nexusmods.com/cdn/file.7z",
+  referrer: "https://www.nexusmods.com/Core/Libs/Common/Widgets/DownloadPopUp?id=4387&game_id=1704",
+  mime: "application/octet-stream"
+});
+route = Core.computeRoute(nexusGameSettings, popupDownload);
+assert.equal(route.folder, "Mods/Nexus Mods/Skyrim Special Edition");
+
+const unknownGame = Core.computeRoute(nexusGameSettings, cdnDownload);
+assert.equal(unknownGame.routed, true);
+assert.equal(unknownGame.folder, "Mods/Nexus Mods");
+assert.equal(Core.resolveFolderTemplate("{game}/Mods", {}), "Mods");
+assert.equal(Core.resolveFolderTemplate("Mods/{game}", { gameName: "CON" }), "Mods/_CON");
+
+route = Core.computeRoute(nexusGameSettings, download({
+  filename: "device.zip",
+  referrer: "https://www.nexusmods.com/con/mods/1"
+}));
+assert.equal(route.routed, true);
+assert.equal(route.folder, "Mods/Nexus Mods/_Con");
+
+assert.equal(Core.sanitizeFolderPath("Mods/Skyrim.").value, "Mods/Skyrim");
+assert.equal(Core.sanitizeFolderPath("Mods/Skyrim.").ok, true);
+assert.equal(Core.sanitizeFolderPath("...").ok, false);
+assert.equal(Core.sanitizeFolderPath("Mods/CON /Files").ok, false);
+assert.equal(Core.sanitizeDestinationPath("D:\\Games\\Skyrim.").value, "D:\\Games\\Skyrim");
+assert.equal(Core.sanitizeFolderPath("Mods/Skyrim\u202E").value, "Mods/Skyrim");
+assert.equal(Core.sanitizeFolderPath("Mods/Cafe\u0301").value, "Mods/Caf\u00e9");
+assert.equal(Core.sanitizeFilename("cafe\u0301.zip"), "caf\u00e9.zip");
+assert.equal(Core.sanitizeFilename("CON.txt"), "_CON.txt");
+const longFilename = Core.sanitizeFilename(`${"a".repeat(200)}.7z`);
+assert.ok(longFilename.length <= 120);
+assert.equal(longFilename.endsWith(".7z"), true);
+
+const longSlug = "g".repeat(300);
+const longFolder = `Mods/${"N".repeat(150)}/{game}`;
+assert.equal(Core.sanitizeFolderPath(longFolder).ok, true);
+route = Core.computeRoute(Core.normalizeSettings({
+  enabled: true,
+  siteRules: [{ hostPattern: "nexusmods.com", folder: longFolder, enabled: true }]
+}), download({
+  filename: "mod.7z",
+  referrer: `https://www.nexusmods.com/${longSlug}/mods/1`,
+  finalUrl: "https://files.nexusmods.com/mod.7z"
+}));
+assert.equal(route.routed, true);
+assert.ok(route.folder.length <= 180, route.folder);
+assert.equal(route.folder.startsWith("Mods/"), true);
+
+const oldestFirst = Core.normalizeSettings({
+  historyLimit: 20,
+  recentRoutes: Array.from({ length: 25 }, (_value, index) => ({
+    id: `route-${index}`,
+    at: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+    host: "example.com",
+    originalFilename: `file-${index}.zip`,
+    extension: "zip",
+    folder: "Websites/Example",
+    ruleType: "site"
+  }))
+});
+assert.equal(oldestFirst.recentRoutes.length, 20);
+assert.equal(oldestFirst.recentRoutes[0].originalFilename, "file-24.zip");
+assert.equal(oldestFirst.recentRoutes[19].originalFilename, "file-5.zip");
+assert.equal(Core.normalizeSettings({
+  promptHosts: { "example.com": "ignored" }
+}).promptHosts["example.com"].state, "ignored");
+
 console.log("core tests passed");
