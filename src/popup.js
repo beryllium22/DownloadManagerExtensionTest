@@ -141,6 +141,16 @@
       els["popup-site-editor"].dataset.initialized = "true";
     }
 
+    const pageRoute = currentDownloadItem
+      ? Core.computeRoute(settings, Object.assign({}, currentDownloadItem, { filename: "download", mime: "" }))
+      : null;
+    const gameFolder = Boolean(
+      matchingSiteRule
+      && currentSourceContext
+      && currentSourceContext.gameName
+      && /\{game\}/i.test(matchingSiteRule.folder || "")
+    );
+
     if (!currentHost) {
       els["popup-route-label"].textContent = "No site";
       els["popup-route-label"].className = "pill warning";
@@ -151,12 +161,19 @@
       els["popup-route-label"].className = "pill warning";
       els["popup-route-summary"].classList.add("is-paused");
       els["popup-current-route"].textContent = "The normal Downloads folder";
-    } else if (matchingSiteRule) {
-      els["popup-route-label"].textContent = matchingSiteRule.sourceGame ? "This game" : "This website";
+    } else if (matchingSiteRule && pageRoute && pageRoute.routed) {
+      els["popup-route-label"].textContent = matchingSiteRule.sourceGame || gameFolder ? "This game" : "This website";
       els["popup-route-label"].className = "pill success";
       const strong = document.createElement("strong");
-      strong.textContent = Core.resolveFolderTemplate(matchingSiteRule.folder, currentSourceContext);
+      strong.textContent = pageRoute.folder;
       els["popup-current-route"].replaceChildren(strong);
+    } else if (matchingSiteRule) {
+      els["popup-route-label"].textContent = "Check folder";
+      els["popup-route-label"].className = "pill warning";
+      els["popup-route-summary"].classList.add("is-unavailable");
+      els["popup-current-route"].textContent = pageRoute && pageRoute.reason && pageRoute.reason !== "default"
+        ? pageRoute.reason
+        : "This folder can't be used, so the download stays in Downloads.";
     } else {
       if (!els["popup-site-folder"].value.trim()) {
         const [suggestedFolder] = Core.suggestFoldersForHost(currentHost, currentSourceContext);

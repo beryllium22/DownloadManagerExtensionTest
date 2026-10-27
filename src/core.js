@@ -4,6 +4,8 @@
   const SETTINGS_VERSION = 2;
   const MAX_RECENT_ROUTES = 200;
   const MAX_FOLDER_LENGTH = 180;
+  const MAX_SEGMENT_LENGTH = 100;
+  const MAX_FILENAME_LENGTH = 120;
   const MAX_SETTINGS_IMPORT_BYTES = 1024 * 1024;
   const MAX_SETTINGS_IMPORT_RULES = 500;
   const MAX_SETTINGS_IMPORT_PROMPT_HOSTS = 2000;
@@ -39,11 +41,46 @@
     "upload",
     "uploads",
     "users",
-    "widgets"
+    "widgets",
+    "articles",
+    "authors",
+    "blog",
+    "bookmarks",
+    "careers",
+    "cart",
+    "categories",
+    "checkout",
+    "collections",
+    "comments",
+    "community",
+    "contact",
+    "feed",
+    "forums",
+    "help",
+    "imageshare",
+    "legal",
+    "messages",
+    "modrewards",
+    "notifications",
+    "organisation",
+    "organizations",
+    "privacy",
+    "profiles",
+    "rewards",
+    "search",
+    "settings",
+    "status",
+    "supporterimages",
+    "tags",
+    "terms",
+    "tracked",
+    "videos",
+    "wallet"
   ]);
   const KNOWN_NEXUS_GAME_NAMES = {
     baldursgate3: "Baldur's Gate 3",
     cyberpunk2077: "Cyberpunk 2077",
+    dragonage: "Dragon Age: Origins",
     dragonageorigins: "Dragon Age: Origins",
     eldenring: "Elden Ring",
     fallout3: "Fallout 3",
@@ -59,6 +96,8 @@
     starfield: "Starfield",
     baldursgate: "Baldur's Gate",
     baldursgate2: "Baldur's Gate II",
+    baldursgate2ee: "Baldur's Gate II",
+    bladeandsorcery: "Blade & Sorcery",
     bladesandsorcery: "Blade & Sorcery",
     bloodborne: "Bloodborne",
     citiesskylines: "Cities: Skylines",
@@ -100,11 +139,84 @@
     thesims4: "The Sims 4",
     valheim: "Valheim",
     warhammer40kdarktide: "Warhammer 40,000: Darktide",
+    vermintide: "Warhammer: Vermintide",
+    vermintide2: "Warhammer: Vermintide 2",
     warhammervermintide2: "Warhammer: Vermintide 2",
     witcher2: "The Witcher 2",
     witcher3: "The Witcher 3",
     xcom2: "XCOM 2"
   };
+  // Real Nexus domain names differ from a few older labels. Match either.
+  const GAME_KEY_ALIASES = {
+    baldursgate2: "baldursgate2ee",
+    baldursgateii: "baldursgate2ee",
+    bladesandsorcery: "bladeandsorcery",
+    dragonageorigins: "dragonage",
+    warhammervermintide2: "vermintide2"
+  };
+  // Ids are the public Nexus game ids for the names above. Download popups
+  // often only include game_id, not the domain slug.
+  const NEXUS_GAME_IDS = {
+    100: "morrowind",
+    101: "oblivion",
+    110: "skyrim",
+    120: "fallout3",
+    130: "newvegas",
+    140: "dragonage",
+    141: "dragonage2",
+    153: "witcher2",
+    162: "darksouls",
+    197: "minecraft",
+    272: "kerbalspaceprogram",
+    424: "rimworld",
+    482: "darksouls2",
+    549: "terraria",
+    641: "thesims4",
+    728: "dragonageinquisition",
+    775: "baldursgate2ee",
+    893: "gta5",
+    952: "witcher3",
+    1151: "fallout4",
+    1155: "subnautica",
+    1249: "dragonsdogma",
+    1271: "xcom2",
+    1303: "stardewvalley",
+    1392: "darksouls3",
+    1661: "divinityoriginalsin2",
+    1704: "skyrimspecialedition",
+    1931: "baldursgate",
+    2298: "kingdomcomedeliverance",
+    2335: "vermintide2",
+    2531: "monsterhunterworld",
+    2590: "fallout76",
+    2673: "bladeandsorcery",
+    2706: "subnauticabelowzero",
+    2708: "bloodborne",
+    2736: "enderal",
+    2763: "sekiro",
+    2952: "demonssouls",
+    3024: "reddeadredemption2",
+    3088: "citiesskylines",
+    3174: "mountandblade2bannerlord",
+    3333: "cyberpunk2077",
+    3474: "baldursgate3",
+    3667: "valheim",
+    3685: "enderalspecialedition",
+    3712: "masseffectlegendaryedition",
+    4095: "monsterhunterrise",
+    4187: "starfield",
+    4333: "eldenring",
+    4943: "warhammer40kdarktide",
+    5113: "hogwartslegacy",
+    5833: "citiesskylines2",
+    5848: "lethalcompany",
+    6063: "palworld",
+    6234: "dragonsdogma2",
+    6993: "monsterhunterwilds",
+    7286: "kingdomcomedeliverance2",
+    7587: "oblivionremastered"
+  };
+  const INVISIBLE_PATH_CHARS = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\u2028\u2029\uFEFF]/g;
   const RESERVED_WINDOWS_NAMES = new Set([
     "con",
     "prn",
@@ -355,18 +467,18 @@
     return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   }
 
+  function nexusSlugFromGameId(value) {
+    const id = String(value || "").trim();
+    if (!/^\d{1,6}$/.test(id)) {
+      return "";
+    }
+    return NEXUS_GAME_IDS[id] || "";
+  }
+
   function extractNexusGameSlugFromUrl(url) {
     const parsed = parseHttpUrl(url);
     if (!parsed || !hostMatches({ hostPattern: NEXUS_HOST_PATTERN, includeSubdomains: true }, parsed.hostname)) {
       return "";
-    }
-
-    const queryGame = parsed.searchParams.get("game_domain_name")
-      || parsed.searchParams.get("game")
-      || parsed.searchParams.get("gameName");
-    const querySlug = cleanGameSlug(queryGame);
-    if (querySlug && !isRejectedGameSlug(querySlug)) {
-      return querySlug;
     }
 
     const parts = parsed.pathname
@@ -390,13 +502,30 @@
 
     // File and CDN hosts often start with a folder like "cdn" or a numeric id.
     // A game slug is only taken from the main site path, such as /skyrim/mods/1.
-    if (normalizeHostPattern(parsed.hostname) !== NEXUS_HOST_PATTERN) {
-      return "";
+    // The path wins over a loose ?game= query so a mod page is not relabeled.
+    if (normalizeHostPattern(parsed.hostname) === NEXUS_HOST_PATTERN) {
+      const firstPathPart = parts[0] && cleanGameSlug(parts[0]);
+      if (firstPathPart && !isRejectedGameSlug(firstPathPart)) {
+        return firstPathPart;
+      }
     }
 
-    const firstPathPart = parts[0] && cleanGameSlug(parts[0]);
-    if (firstPathPart && !isRejectedGameSlug(firstPathPart)) {
-      return firstPathPart;
+    const namedQuery = parsed.searchParams.get("game_domain_name")
+      || parsed.searchParams.get("domain_name")
+      || parsed.searchParams.get("gameName");
+    const namedSlug = cleanGameSlug(namedQuery);
+    if (namedSlug && !isRejectedGameSlug(namedSlug)) {
+      return namedSlug;
+    }
+
+    const idSlug = nexusSlugFromGameId(parsed.searchParams.get("game_id") || parsed.searchParams.get("gameId"));
+    if (idSlug) {
+      return idSlug;
+    }
+
+    const gameQuery = cleanGameSlug(parsed.searchParams.get("game"));
+    if (gameQuery && !isRejectedGameSlug(gameQuery)) {
+      return gameQuery;
     }
 
     return "";
@@ -422,11 +551,20 @@
       .replace(/^[./\\]+|[./\\]+$/g, "");
   }
 
+  function canonicalGameKey(value) {
+    const key = gameMatchKey(value);
+    return GAME_KEY_ALIASES[key] || key;
+  }
+
   function friendlyGameName(value) {
     const normalized = normalizeGamePattern(value);
     const key = gameMatchKey(normalized);
     if (!key) {
       return "";
+    }
+    const canonical = GAME_KEY_ALIASES[key] || key;
+    if (KNOWN_NEXUS_GAME_NAMES[canonical]) {
+      return KNOWN_NEXUS_GAME_NAMES[canonical];
     }
     if (KNOWN_NEXUS_GAME_NAMES[key]) {
       return KNOWN_NEXUS_GAME_NAMES[key];
@@ -472,8 +610,32 @@
   }
 
   function isReservedWindowsSegment(segment) {
-    const baseName = segment.split(".")[0].toLowerCase();
+    const stripped = String(segment || "").replace(/[. ]+$/g, "").trim();
+    const baseName = stripped.split(".")[0].trim().toLowerCase();
     return RESERVED_WINDOWS_NAMES.has(baseName);
+  }
+
+  function cleanStoredSegment(segment) {
+    return String(segment || "")
+      .normalize("NFC")
+      .replace(INVISIBLE_PATH_CHARS, "")
+      .trim()
+      .replace(/[. ]+$/g, "")
+      .trim();
+  }
+
+  function toFolderSegment(value) {
+    let segment = cleanStoredSegment(String(value || "").replace(/[<>:"/\\|?*\x00-\x1F]/g, " ").replace(/\s+/g, " "));
+    if (!segment) {
+      return "";
+    }
+    if (isReservedWindowsSegment(segment)) {
+      segment = `_${segment}`;
+    }
+    if (segment.length > MAX_SEGMENT_LENGTH) {
+      segment = segment.slice(0, MAX_SEGMENT_LENGTH).replace(/[. ]+$/g, "");
+    }
+    return segment;
   }
 
   function sanitizeFolderPath(input) {
@@ -503,9 +665,10 @@
 
     const segments = value.split("/");
     const blockedSegments = new Set(["appdata", "program files", "program files (x86)", "system32", "windows"]);
+    const cleaned = [];
 
     for (const segment of segments) {
-      const normalized = segment.trim();
+      const normalized = cleanStoredSegment(segment);
       const lower = normalized.toLowerCase();
 
       if (!normalized || normalized === "." || normalized === "..") {
@@ -547,9 +710,11 @@
           error: "System-looking folders are blocked to avoid unsafe or confusing destinations."
         };
       }
+
+      cleaned.push(normalized);
     }
 
-    return { ok: true, value: segments.join("/"), error: "" };
+    return { ok: true, value: cleaned.join("/"), error: "" };
   }
 
   function sanitizeAbsoluteFolderPath(input) {
@@ -595,9 +760,10 @@
     const rest = value.slice(3);
     const segments = rest.split("\\");
     const blockedSegments = new Set(["appdata", "program files", "program files (x86)", "system32", "windows"]);
+    const cleaned = [];
 
     for (const segment of segments) {
-      const normalized = segment.trim();
+      const normalized = cleanStoredSegment(segment);
       const lower = normalized.toLowerCase();
 
       if (!normalized || normalized === "." || normalized === "..") {
@@ -631,9 +797,11 @@
           error: "System folders are blocked. Choose a normal personal folder or game folder."
         };
       }
+
+      cleaned.push(normalized);
     }
 
-    return { ok: true, value: `${drive.toUpperCase()}\\${segments.join("\\")}`, error: "" };
+    return { ok: true, value: `${drive.toUpperCase()}\\${cleaned.join("\\")}`, error: "" };
   }
 
   function getDestinationKind(input) {
@@ -653,8 +821,21 @@
       : sanitizeFolderPath(input);
   }
 
+  function limitFilenameLength(value) {
+    if (value.length <= MAX_FILENAME_LENGTH) {
+      return value;
+    }
+    const dot = value.lastIndexOf(".");
+    const extension = dot > 0 && value.length - dot <= 16 ? value.slice(dot) : "";
+    let base = value.slice(0, MAX_FILENAME_LENGTH - extension.length).replace(/[. ]+$/g, "");
+    if (!base || isReservedWindowsSegment(base)) {
+      base = "download";
+    }
+    return `${base}${extension}`;
+  }
+
   function sanitizeFilename(input, fallbackUrl) {
-    let value = String(input || "").trim();
+    let value = String(input || "").normalize("NFC").replace(INVISIBLE_PATH_CHARS, "").trim();
 
     if (!value && fallbackUrl) {
       try {
@@ -677,7 +858,7 @@
       value = `_${value}`;
     }
 
-    return value;
+    return limitFilenameLength(value);
   }
 
   function getExtensionCandidates(filename, fallbackUrl) {
@@ -723,34 +904,71 @@
       .replace(/\b\w/g, (letter) => letter.toUpperCase()) || "Website";
   }
 
-  function safeFolderTokenValue(value, fallback) {
-    const sanitized = String(value || "")
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, " ")
-      .replace(/\s+/g, " ")
-      .replace(/^\.+/, "")
-      .replace(/[. ]+$/g, "")
-      .trim();
-    return sanitized || fallback;
+  function collapseResolvedFolder(original, resolved) {
+    if (getDestinationKind(original) === "absolute") {
+      return String(resolved || "").replace(/\//g, "\\").replace(/\\{2,}/g, "\\").replace(/\\+$/g, "");
+    }
+    return String(resolved || "").replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
+  }
+
+  function shrinkFolderPath(path, max) {
+    const absolute = getDestinationKind(path) === "absolute";
+    const normalized = absolute ? String(path).replace(/\//g, "\\") : String(path).replace(/\\/g, "/");
+    const parts = absolute ? normalized.split("\\") : normalized.split("/");
+    let index = absolute ? 1 : 0;
+    if (parts.length <= index) {
+      return "";
+    }
+    for (let cursor = index + 1; cursor < parts.length; cursor += 1) {
+      if (parts[cursor].length > parts[index].length) {
+        index = cursor;
+      }
+    }
+    const overflow = normalized.length - max;
+    if (overflow <= 0 || parts[index].length <= 1) {
+      return "";
+    }
+    parts[index] = parts[index].slice(0, Math.max(1, parts[index].length - overflow)).replace(/[. ]+$/g, "");
+    if (!parts[index]) {
+      return "";
+    }
+    return absolute ? parts.join("\\") : parts.filter(Boolean).join("/");
+  }
+
+  function fitResolvedDestination(folder) {
+    let current = String(folder || "");
+    let result = sanitizeDestinationPath(current);
+    for (let attempt = 0; attempt < 6 && !result.ok && /characters or fewer/.test(result.error || ""); attempt += 1) {
+      const max = /240 characters/.test(result.error || "") ? 240 : MAX_FOLDER_LENGTH;
+      const shrunk = shrinkFolderPath(current, max);
+      if (!shrunk || shrunk === current) {
+        break;
+      }
+      current = shrunk;
+      result = sanitizeDestinationPath(current);
+    }
+    return result;
   }
 
   function resolveFolderTemplate(folder, sourceContext) {
     const context = sourceContext || {};
-    return String(folder || "").replace(FOLDER_TOKEN_PATTERN, (_match, token) => {
+    const resolved = String(folder || "").replace(FOLDER_TOKEN_PATTERN, (_match, token) => {
       const normalizedToken = String(token || "").toLowerCase();
       if (normalizedToken === "game") {
-        return safeFolderTokenValue(context.gameName || context.gameSlug, "Unknown Game");
+        return toFolderSegment(context.gameName || context.gameSlug);
       }
       if (normalizedToken === "gameslug") {
-        return safeFolderTokenValue(context.gameSlug || context.gameName, "unknown-game");
+        return toFolderSegment(context.gameSlug || context.gameName);
       }
       if (normalizedToken === "site") {
-        return safeFolderTokenValue(context.sourceName || context.siteName, "Website");
+        return toFolderSegment(context.sourceName || context.siteName) || "Website";
       }
       if (normalizedToken === "host") {
-        return safeFolderTokenValue(context.host, "website");
+        return toFolderSegment(context.host) || "website";
       }
       return _match;
     });
+    return collapseResolvedFolder(folder, resolved);
   }
 
   function suggestFoldersForHost(host, sourceContext) {
@@ -762,8 +980,9 @@
     const sourceSuggestions = [];
     if (hostMatches({ hostPattern: NEXUS_HOST_PATTERN, includeSubdomains: true }, normalizedHost)) {
       sourceSuggestions.push("Mods/Nexus Mods/{game}", "Mods/{game}", "Game Mods/{game}");
-      if (sourceContext && (sourceContext.gameName || sourceContext.gameSlug)) {
-        sourceSuggestions.push(`Mods/Nexus Mods/${safeFolderTokenValue(sourceContext.gameName || sourceContext.gameSlug, "Unknown Game")}`);
+      const gameFolder = toFolderSegment(sourceContext && (sourceContext.gameName || sourceContext.gameSlug));
+      if (gameFolder) {
+        sourceSuggestions.push(`Mods/Nexus Mods/${gameFolder}`);
       }
     }
 
@@ -806,8 +1025,8 @@
     }
 
     const sourceContext = getDownloadSourceContext(downloadItem);
-    const expectedKey = gameMatchKey(expectedGame);
-    return [sourceContext.gameSlug, sourceContext.gameName].some((value) => gameMatchKey(value) === expectedKey);
+    const expectedKey = canonicalGameKey(expectedGame);
+    return [sourceContext.gameSlug, sourceContext.gameName].some((value) => canonicalGameKey(value) === expectedKey);
   }
 
   function extensionsMatch(extensions, candidates) {
@@ -947,8 +1166,14 @@
         continue;
       }
       const normalizedEntry = entry && typeof entry === "object" ? entry : {};
+      const legacyState = typeof entry === "string" ? entry : "";
+      const state = ["prompted", "ignored", "saved"].includes(normalizedEntry.state)
+        ? normalizedEntry.state
+        : ["prompted", "ignored", "saved"].includes(legacyState)
+          ? legacyState
+          : "prompted";
       output[normalizedHost] = {
-        state: ["prompted", "ignored", "saved"].includes(normalizedEntry.state) ? normalizedEntry.state : "prompted",
+        state,
         firstSeenAt: normalizedEntry.firstSeenAt || nowIso(),
         lastSeenAt: normalizedEntry.lastSeenAt || normalizedEntry.firstSeenAt || nowIso(),
         lastPromptedAt: normalizedEntry.lastPromptedAt || normalizedEntry.firstSeenAt || nowIso()
@@ -988,6 +1213,12 @@
       ? normalizeArray(source.recentRoutes)
         .filter((route) => route && typeof route === "object")
         .map(normalizeRecentRoute)
+        .sort((left, right) => {
+          if (left.at === right.at) {
+            return 0;
+          }
+          return left.at < right.at ? 1 : -1;
+        })
         .slice(0, historyLimit)
       : [];
 
@@ -1130,7 +1361,7 @@
     }
 
     const resolvedFolder = resolveFolderTemplate(selectedRule.folder, sourceContext);
-    const folderResult = sanitizeDestinationPath(resolvedFolder);
+    const folderResult = fitResolvedDestination(resolvedFolder);
     const ruleName = selectedRule.name
       || (selectedRule.sourceGame
         ? `${selectedRule.hostPattern} / ${friendlyGameName(selectedRule.sourceGame)}`

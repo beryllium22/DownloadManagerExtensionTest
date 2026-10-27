@@ -6,11 +6,25 @@ const path = require("node:path");
 const hostPath = path.resolve(__dirname, "..", "native-host", "tidy-downloads-host.ps1");
 const hostSource = fs.readFileSync(hostPath, "utf8");
 assert.match(hostSource, /\.tidy-incoming-/);
+assert.match(hostSource, /A folder already uses that name/);
 assert.doesNotMatch(hostSource, /Remove-Item -LiteralPath \$destination -Force/);
+const directoryGuard = hostSource.indexOf("A folder already uses that name");
 const replaceIndex = hostSource.indexOf("$replaceExisting");
-const incomingMove = hostSource.indexOf("Move-Item -LiteralPath $sourcePath -Destination $incoming", replaceIndex);
-const backupMove = hostSource.indexOf("Move-Item -LiteralPath $destination -Destination $backup", incomingMove);
-assert.ok(replaceIndex > 0 && incomingMove > replaceIndex && backupMove > incomingMove, "overwrite must copy the new file in before moving the old file aside");
+const copyIndex = hostSource.indexOf("Copy-Item -LiteralPath $sourcePath -Destination $incoming", replaceIndex);
+const backupMove = hostSource.indexOf("Move-Item -LiteralPath $destination -Destination $backup", copyIndex);
+const incomingMove = hostSource.indexOf("Move-Item -LiteralPath $incoming -Destination $destination", backupMove);
+const removeBackup = hostSource.indexOf("Remove-Item -LiteralPath $backup -Force", incomingMove);
+const removeSource = hostSource.indexOf("Remove-Item -LiteralPath $sourcePath -Force", removeBackup);
+assert.ok(
+  directoryGuard > 0
+  && replaceIndex > directoryGuard
+  && copyIndex > replaceIndex
+  && backupMove > copyIndex
+  && incomingMove > backupMove
+  && removeBackup > incomingMove
+  && removeSource > removeBackup,
+  "overwrite must copy the new file in before moving the old file aside, and must not delete the download first"
+);
 
 function callHost(message) {
   return new Promise((resolve, reject) => {

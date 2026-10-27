@@ -65,8 +65,14 @@ function createHarness(options) {
       onDeterminingFilename: createEvent(),
       onErased: createEvent(),
       search(query, callback) {
-        const item = setup.downloadItems && setup.downloadItems[String(query.id)];
-        queueMicrotask(() => callback(item ? [structuredClone(item)] : []));
+        const respond = () => {
+          const item = setup.downloadItems && setup.downloadItems[String(query.id)];
+          callback(item ? [structuredClone(item)] : []);
+        };
+        if (setup.deferSearch && setup.deferSearch(query, respond)) {
+          return;
+        }
+        queueMicrotask(respond);
       },
       erase(query, callback) {
         erasedDownloads.push(query.id);
@@ -254,7 +260,10 @@ async function run() {
       }
     },
     downloadItems: {
-      "6": makeDownload({ id: 6 })
+      "6": makeDownload({
+        id: 6,
+        filename: "C:\\Users\\Tester\\Downloads\\Tidy Downloads Staging\\file.zip"
+      })
     },
     nativeResponse: { ok: false, error: "Helper unavailable" }
   });
@@ -309,6 +318,104 @@ async function run() {
   assert.equal(moved.settings.recentRoutes[0].folder, "D:\\Organized");
   assert.equal(moved.localData.pendingNativeMoves["13"], undefined);
   assert.equal(moved.localData.pendingRouteRecords["13"], undefined);
+
+  const overwriteStaging = createHarness({
+    settings: Object.assign(siteSettings("D:\\Organized"), { conflictAction: "overwrite" })
+  });
+  let overwriteSuggestion;
+  await overwriteStaging.context.handleDownload(makeDownload({ id: 30 }), (suggestion) => {
+    overwriteSuggestion = suggestion;
+  });
+  assert.equal(overwriteSuggestion.conflictAction, "uniquify", "staging must not replace a file that is still waiting to move");
+  assert.equal(overwriteStaging.localData.pendingNativeMoves["30"].conflictAction, "overwrite");
+
+  const overwriteRelative = createHarness({
+    settings: Object.assign(siteSettings("Websites/Example"), { conflictAction: "overwrite", askOnFirstDownload: false })
+  });
+  let relativeSuggestion;
+  await overwriteRelative.context.handleDownload(makeDownload({ id: 31 }), (suggestion) => {
+    relativeSuggestion = suggestion;
+  });
+  assert.equal(relativeSuggestion.conflictAction, "overwrite");
+
+  const unstaged = createHarness({
+    settings: siteSettings("D:\\Organized"),
+    localData: {
+      pendingNativeMoves: {
+        "32": { targetFolder: "D:\\Organized", conflictAction: "overwrite", attempts: 0, lastError: "" }
+      }
+    },
+    downloadItems: {
+      "32": makeDownload({ id: 32, filename: "C:\\Users\\Tester\\Downloads\\file.zip" })
+    }
+  });
+  await unstaged.context.completeNativeMove(32);
+  assert.equal(unstaged.nativeMessages.length, 0, "a file outside staging must not be sent to the helper");
+  assert.equal(unstaged.localData.pendingNativeMoves["32"], undefined);
+
+  const raced = createHarness({
+    settings: siteSettings("D:\\Organized"),
+    localData: {
+      pendingNativeMoves: {
+        "33": { targetFolder: "D:\\Organized", conflictAction: "uniquify", attempts: 0, lastError: "" }
+      }
+    },
+    downloadItems: {
+      "33": makeDownload({
+        id: 33,
+        filename: "C:\\Users\\Tester\\Downloads\\Tidy Downloads Staging\\file.zip"
+      })
+    },
+    nativeResponse: { ok: true, path: "D:\\Organized\\file.zip" }
+  });
+  await Promise.all([
+    raced.context.completeNativeMove(33),
+    raced.context.completeNativeMove(33)
+  ]);
+  assert.equal(raced.nativeMessages.length, 1, "one download must not be moved twice");
+
+  const earlyItem = makeDownload({
+    id: 35,
+    state: "in_progress",
+    filename: "C:\\Users\\Tester\\Downloads\\Tidy Downloads Staging\\file.zip"
+  });
+  const deferredSearches = [];
+  const earlyComplete = createHarness({
+    settings: siteSettings("D:\\Organized"),
+    localData: {
+      pendingNativeMoves: {
+        "35": { targetFolder: "D:\\Organized", conflictAction: "uniquify", attempts: 0, lastError: "" }
+      }
+    },
+    downloadItems: { "35": earlyItem },
+    nativeResponse: { ok: true, path: "D:\\Organized\\file.zip" },
+    deferSearch(_query, respond) {
+      if (deferredSearches.length === 0) {
+        deferredSearches.push(respond);
+        return true;
+      }
+      return false;
+    }
+  });
+  const earlyCheck = earlyComplete.context.completeNativeMove(35);
+  for (let step = 0; step < 8 && deferredSearches.length === 0; step += 1) {
+    await Promise.resolve();
+  }
+  assert.equal(deferredSearches.length, 1);
+  const finishedCheck = earlyComplete.context.completeNativeMove(35);
+  deferredSearches[0]();
+  earlyItem.state = "complete";
+  await earlyCheck;
+  await finishedCheck;
+  assert.equal(earlyComplete.nativeMessages.length, 1, "a completion that arrives during an earlier check still moves once");
+
+  assert.doesNotMatch(backgroundSource, /^await\b/m, "listeners have to be registered before the service worker awaits");
+  const startupBlock = backgroundSource.slice(
+    backgroundSource.indexOf("chrome.runtime.onStartup.addListener"),
+    backgroundSource.indexOf("function installContextMenus")
+  );
+  assert.match(startupBlock, /ensureSettings/);
+  assert.match(startupBlock, /recoverPendingNativeMoves/);
 
   console.log("background privacy and native-move tests passed");
 }

@@ -51,6 +51,22 @@ function Send-NativeMessage {
   $stdoutStream.Flush()
 }
 
+function Test-ReservedWindowsName {
+  param([string]$Name)
+
+  $stripped = $Name.Trim().TrimEnd('.', ' ')
+  if ([string]::IsNullOrWhiteSpace($stripped)) {
+    return $false
+  }
+  $base = ($stripped -split '\.', 2)[0].Trim()
+  $reserved = @(
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+  )
+  return $reserved -contains $base.ToUpperInvariant()
+}
+
 function Get-SafeAbsoluteFolder {
   param([string]$Path)
 
@@ -78,17 +94,25 @@ function Get-SafeAbsoluteFolder {
 
   $invalidChars = [IO.Path]::GetInvalidFileNameChars()
   $segments = $fullPath.Substring($root.Length).Split("\")
+  $cleanSegments = New-Object System.Collections.Generic.List[string]
   foreach ($segment in $segments) {
-    if ([string]::IsNullOrWhiteSpace($segment) -or $segment -eq "." -or $segment -eq "..") {
+    $normalized = $segment.Trim().TrimEnd('.', ' ')
+    if ([string]::IsNullOrWhiteSpace($normalized) -or $normalized -eq "." -or $normalized -eq "..") {
       throw "Folder paths cannot contain blank, current, or parent directory segments."
     }
 
-    if ($segment.IndexOfAny($invalidChars) -ge 0) {
+    if ($normalized.IndexOfAny($invalidChars) -ge 0) {
       throw "Folder names contain invalid Windows characters."
     }
+
+    if (Test-ReservedWindowsName $normalized) {
+      throw "Folder names cannot use reserved Windows device names."
+    }
+
+    $cleanSegments.Add($normalized)
   }
 
-  return $fullPath
+  return [IO.Path]::GetFullPath(($root.TrimEnd("\") + "\" + ($cleanSegments -join "\")))
 }
 
 function Get-UniquePath {
@@ -128,13 +152,31 @@ function Move-Download {
   [IO.Directory]::CreateDirectory($targetFolder) | Out-Null
 
   $fileName = [IO.Path]::GetFileName($sourcePath)
+  if ([string]::IsNullOrWhiteSpace($fileName) -or (Test-ReservedWindowsName $fileName)) {
+    throw "The download name is not a safe Windows file name, so it was left in staging."
+  }
   $destination = Join-Path $targetFolder $fileName
-  $replaceExisting = [string]$Message.conflictAction -eq "overwrite" -and (Test-Path -LiteralPath $destination)
+  if ($destination.Length -gt 259) {
+    throw "The destination path is too long for Windows, so the download was left in staging."
+  }
 
-  # "prompt" is Chrome's dialog for the staging name. This helper has no UI,
-  # so a full path keeps both files unless the user chose overwrite.
+  $destinationExists = Test-Path -LiteralPath $destination
+  $destinationIsFile = Test-Path -LiteralPath $destination -PathType Leaf
+  if ($destinationExists -and -not $destinationIsFile) {
+    throw "A folder already uses that name. The download was left in the staging folder."
+  }
+  if ($destinationIsFile) {
+    $existing = Get-Item -LiteralPath $destination -Force
+    if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+      throw "The destination is a link, so it was left untouched and the download stayed in staging."
+    }
+  }
+
+  # "prompt" is Chrome's dialog for a normal Downloads folder. This helper has
+  # no UI, so a full path keeps both files unless the user chose overwrite.
+  $replaceExisting = [string]$Message.conflictAction -eq "overwrite" -and $destinationIsFile
   if (-not $replaceExisting) {
-    if (Test-Path -LiteralPath $destination) {
+    if ($destinationExists) {
       $destination = Get-UniquePath $destination
     }
     Move-Item -LiteralPath $sourcePath -Destination $destination
@@ -144,26 +186,54 @@ function Move-Download {
     }
   }
 
-  # Land the new file beside the old one before the old one is moved aside.
-  # A failed copy then leaves the existing destination untouched.
+  # Copy the download into the target folder before the existing file moves.
+  # The original download stays in staging until the new file is in place and
+  # the previous file is only removed after that check succeeds.
   $token = [guid]::NewGuid().ToString("N")
   $incoming = Join-Path $targetFolder (".tidy-incoming-$token")
   $backup = Join-Path $targetFolder (".tidy-backup-$token")
-  Move-Item -LiteralPath $sourcePath -Destination $incoming
+  $sourceLength = (Get-Item -LiteralPath $sourcePath -Force).Length
   try {
+    Copy-Item -LiteralPath $sourcePath -Destination $incoming
+    $copiedLength = (Get-Item -LiteralPath $incoming -Force).Length
+    if ($copiedLength -ne $sourceLength) {
+      throw "The copied download did not match the original."
+    }
     Move-Item -LiteralPath $destination -Destination $backup
     try {
       Move-Item -LiteralPath $incoming -Destination $destination
+      $landed = Get-Item -LiteralPath $destination -Force
+      if ($landed.PSIsContainer -or ($landed.Length -ne $sourceLength)) {
+        throw "The new file was not stored correctly."
+      }
     } catch {
-      if (Test-Path -LiteralPath $backup) {
+      if ((Test-Path -LiteralPath $destination) -and (Test-Path -LiteralPath $backup)) {
+        $failedNew = Join-Path $targetFolder (".tidy-failed-$token")
+        Move-Item -LiteralPath $destination -Destination $failedNew
+        Move-Item -LiteralPath $backup -Destination $destination
+        if (Test-Path -LiteralPath $failedNew) {
+          Remove-Item -LiteralPath $failedNew -Force
+        }
+      } elseif (Test-Path -LiteralPath $backup) {
         Move-Item -LiteralPath $backup -Destination $destination
       }
       throw
     }
-    Remove-Item -LiteralPath $backup -Force
+    try {
+      Remove-Item -LiteralPath $backup -Force
+    } catch {
+      $previousName = "{0} (previous){1}" -f [IO.Path]::GetFileNameWithoutExtension($fileName), [IO.Path]::GetExtension($fileName)
+      $previous = Get-UniquePath (Join-Path $targetFolder $previousName)
+      if (Test-Path -LiteralPath $backup) {
+        Move-Item -LiteralPath $backup -Destination $previous
+      }
+    }
+    if (Test-Path -LiteralPath $sourcePath) {
+      Remove-Item -LiteralPath $sourcePath -Force -ErrorAction SilentlyContinue
+    }
   } catch {
     if (Test-Path -LiteralPath $incoming) {
-      Move-Item -LiteralPath $incoming -Destination $sourcePath
+      Remove-Item -LiteralPath $incoming -Force
     }
     throw
   }
