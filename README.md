@@ -1,159 +1,105 @@
-# Tidy Downloads for Brave
+# Tidy Downloads
 
-### Built for modders. Made for manual downloads.
+Tidy Downloads puts Brave downloads into folders by website and by file type.
+A mod from Nexus Mods can land in that game's folder. A video can land with your other videos. Everything else stays in Downloads.
 
-**Spend less time hunting through archives—and more time building your next mod setup.**
+It runs only in Brave, and it stays on your computer. It does not send downloads, page addresses, or folder names anywhere.
 
-Manual mod downloads add up quickly. A few files from Nexus Mods become a crowded Downloads folder: different games, patches, textures, optional files, and archives you meant to install later. Before long, finding the right download becomes another job.
+## Install
 
-**Tidy Downloads for Brave** is a lightweight browser extension built for game modders who want a clearer way to organize and keep track of those manual downloads. It routes new files into folders you choose, separates Nexus Mods downloads by game when game information is available, and gives you an optional local view of recent routing activity.
+1. Download the ZIP from the [latest release](https://github.com/beryllium22/DownloadManagerExtensionTest/releases/latest).
+2. Unzip it. You want the folder that contains `manifest.json`, not the ZIP itself.
+3. Open `brave://extensions`.
+4. Turn on **Developer mode**.
+5. Click **Load unpacked**.
+6. Pick the unzipped folder.
 
-It is not a mod manager. It does not install mods, manage load orders, or resolve dependencies. It handles the step before that: keeping the files you download organized and easy to find.
+Brave opens the Tidy Downloads settings page when the extension is first installed.
 
-## 🎮 Give every game's downloads a home
+## First run
 
-Instead of mixing Skyrim and Fallout archives together, use one Nexus Mods rule with a game-aware destination:
+Open a site you download from, such as Nexus Mods, and click the Tidy Downloads toolbar button. It shows the folder the next download from that page will use.
 
-```text
-Mods/Nexus Mods/{game}
-```
+![The popup showing where the next download saves](docs/images/popup-next-download.png)
 
-When the download page, URL, or referrer identifies the game, files can land in folders such as:
+If you have not chosen a folder yet, open **Add a folder for the rest of this site**. Pick a suggestion or type a name such as `Mods/Nexus Mods/{game}`, then save it. `{game}` is replaced with the game name when Nexus Mods provides one.
 
-```text
-Downloads/
-└── Mods/
-    └── Nexus Mods/
-        ├── Skyrim Special Edition/
-        └── Fallout 4/
-```
+![Folder suggestions for the current website](docs/images/popup-suggestions.png)
 
-Add game-specific rules when you want more control, or use the shared rule to keep recognized games separated automatically.
+The first download from a new website can also ask you itself. That question is on by default. Turn it off under **Behavior** if you would rather add folders yourself.
 
-## Keep track of what you downloaded—and where it went
+A name such as `Mods/Nexus Mods` stays inside Brave's Downloads folder. A full Windows path such as `D:\Games\Skyrim\Mods` needs the helper below.
 
-The optional recent-activity view shows filenames, websites, available game/source information, and routing destinations. It helps answer the everyday modding question:
+## Settings
 
-> “Where did that archive I just downloaded end up?”
+**Websites** is one row per site. Use **Narrow this rule** when only one game, or only some file endings, should use that folder.
 
-This is a local routing record, not a mod-version tracker or a permanent archive catalogue.
+![A website rule narrowed to one game](docs/images/narrow-rule-one-game.png)
 
-## Your websites. Your folders. Your workflow.
+**File types** is for the kind of file, no matter which site it came from. Archives and videos are the usual ones.
 
-- **Organize by source.** Give Nexus Mods and other download websites their own destinations.
-- **Organize by file type.** Create rules for ZIP, 7z, RAR, and other file endings, alongside categories for documents and media.
-- **Refine your rules.** Use game-specific matching, subdomains, and file endings where a general website rule is not enough.
-- **Choose a local drive folder.** The optional Windows native helper moves completed downloads into your chosen folder, including destinations on another drive.
-- **Add rules as you browse.** Use a page context-menu shortcut or an optional first-download prompt.
-- **Stay in control.** Pause routing, switch website/file-type priority, turn activity history off, and export or restore your configuration.
+![File type folders](docs/images/file-types-tab.png)
 
-Downloads without a matching rule keep Brave's normal download behavior.
+**Behavior** chooses whether Tidy Downloads asks about a new site, and what happens when the destination already has a file with the same name. **Activity** is a short local note of where recent files went.
 
-## Local settings, without cloud sync
+![Behavior settings](docs/images/behavior-tab.png)
 
-Rules and recent activity are stored locally in extension storage. Recent activity does not retain full download URLs or their query parameters. Incognito downloads are excluded from recent activity and first-download prompts; downloads requiring a native move stay with the browser's normal destination in incognito.
+![Recent activity](docs/images/activity-tab.png)
 
-Exported settings may include remembered websites, filenames, destinations, and activity timestamps. Treat those backups as private.
+File type rules are checked before website rules. You can switch that under Behavior. A narrower website rule, such as one game, wins over a rule for the whole site.
 
-## Start simple. Expand when you need to.
+## Optional Windows helper
 
-Load the extension in Brave, add a Nexus Mods website rule, and choose a game-aware folder. Subfolders inside Brave's normal Downloads location work without additional software. Full Windows drive paths require the separately installed native helper.
+Brave can only choose a folder inside Downloads. To save on another drive, Tidy Downloads first finishes the file in a `Tidy Downloads Staging` folder, then a small PowerShell helper moves it.
 
----
+You do not need the helper for folders inside Downloads.
 
-**For modders who download manually—and want the files, not the folder chaos.**
-
----
-
-## Installation and technical reference
-
-## Folder modes
-
-Subfolders work immediately:
-
-- `Media/Videos`
-- `Mods/Nexus Mods`
-
-These save inside Brave's normal Downloads folder.
-
-Full Windows folders need the native helper:
-
-- `D:\Games\Skyrim\Mods`
-- `D:\Media\Videos`
-
-Chromium does not allow extensions to directly choose arbitrary drive paths. Tidy Downloads handles this by saving the file to a staging folder first, then asking the local helper to move it after the download finishes.
-
-## Nexus Mods game sorting
-
-Tidy Downloads can detect the Nexus game from the download page, final URL, or referrer when the URL includes a game path such as:
-
-- `https://www.nexusmods.com/skyrimspecialedition/mods/123`
-- `https://www.nexusmods.com/fallout4/mods/456`
-
-Use `{game}` in a website folder to automatically split one Nexus rule by game:
-
-- Website: `nexusmods.com`
-- Folder: `Mods/Nexus Mods/{game}`
-
-That routes downloads into folders like:
-
-- `Mods/Nexus Mods/Skyrim Special Edition`
-- `Mods/Nexus Mods/Fallout 4`
-
-For game-specific rules, open a website rule, expand **Advanced matching**, and fill in **Limit to a game or source** with a Nexus game name, game slug, or game URL. Leave it empty when one rule should cover every game on the site.
-
-## Install in Brave
-
-1. Open `brave://extensions`.
-2. Turn on `Developer mode`.
-3. Choose `Load unpacked`.
-4. Select the project folder that contains `manifest.json`.
-
-## Enable full drive paths
-
-1. Load the extension in Brave.
-2. Open `brave://extensions`.
-3. Copy the extension ID for Tidy Downloads.
-4. Run:
+1. On `brave://extensions`, copy the ID under Tidy Downloads.
+2. In PowerShell, from the unzipped folder:
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\native-host\install-native-host.ps1 -ExtensionId YOUR_EXTENSION_ID
 ```
 
-5. Restart Brave.
-6. Open Tidy Downloads settings and choose `Check Helper`.
+3. Restart Brave.
+4. Open Tidy Downloads settings and choose **Check helper**.
 
-If a completed file could not be moved because the helper was unavailable, the pending move is kept. Install or restart the helper, then use **Retry Pending Moves** in settings.
+The helper is installed for your Windows user. It does not need an administrator. Details are in `native-host/README.md`.
 
-## Recommended first setup
+## FAQ
 
-1. Open the extension settings.
-2. Choose `Add Suggested Folders`.
-3. Add special websites you care about, such as Nexus Mods.
-4. Leave unknown sites alone; they will keep using Brave's normal Downloads folder unless you save a folder for them.
+**I loaded it and nothing was added to Brave.**
+Unzip the release first, then Load unpacked on the folder that contains `manifest.json`. Loading the ZIP, or a folder that only contains the ZIP, does not install it. Developer mode has to stay on.
 
-## Rule priority
+**The file stayed in Downloads.**
+Open the popup on that site and check the folder. Sorting can be turned off from the popup. A file type rule may have matched first, or no rule matched and asking about new sites is off. Private windows always stay in Downloads.
 
-When several website rules match, the most specific rule wins automatically. Game-specific, file-ending-specific, and subdomain-specific rules take priority over a general website rule. Within file type rules, a narrow exact file-ending rule takes priority over a broader preset.
+**It says a download is waiting for the computer helper.**
+The folder is a full path, so the file is in `Downloads\Tidy Downloads Staging` until the helper moves it. Install the helper, restart Brave, and use **Check helper**. The file is still on disk. Tidy Downloads does not delete it when the helper is missing.
 
-## Development
+**Two downloads had the same name.**
+The default is **Keep both files**, so Brave adds a number. **Replace the old file** is in Behavior. For a full path outside Downloads, Replace is the only choice that overwrites. The helper will not replace a folder with a file, and it keeps the old file if the new copy cannot be put in place.
 
-Run the syntax and routing tests with:
+**Nexus Mods put the file in the wrong game folder, or in a generic folder.**
+The game name comes from the Nexus page address, including the usual download popup. A direct file link with no game in it uses the rest of the folder, not a guessed name. Open the website rule and set **Only this game or source** when one game should have its own folder.
 
-```powershell
+**A folder name was shortened or slightly changed.**
+Windows names cannot contain `\ / : * ? " < > |`, end in a dot or space, or use reserved names such as `CON`. Very long names are shortened so the file can still be saved. The popup shows the folder that will actually be used.
+
+**Activity shows a site I did not want remembered.**
+Activity is stored only in this browser, and only when **Keep a local activity list** is on. Use **Clear activity** or **Forget all answers**. Private windows are not listed. Full download links are not saved.
+
+**I moved the extension folder and the helper stopped.**
+Run the installer again. It copies the helper to `%LOCALAPPDATA%\Tidy Downloads\native-host`, so moving the unzipped folder afterward does not disconnect it. Uninstall with `native-host\uninstall-native-host.ps1`.
+
+## Develop
+
+From a checkout of this repository:
+
+```bash
 npm test
-```
-
-Preview the popup and settings pages with realistic local sample data:
-
-```powershell
 npm run preview
-```
-
-Then open `http://127.0.0.1:4174/options.html` or `http://127.0.0.1:4174/popup.html`. The preview mock is only injected by the development server; it is never loaded by the extension. The server listens only on loopback and exposes only the UI files required by those previews.
-
-Build a versioned unpacked folder and ZIP in `dist` with:
-
-```powershell
 npm run package
 ```
+
+`npm run preview` serves the settings page and popup on `127.0.0.1` with sample data. `npm run package` writes `dist/tidy-downloads-for-brave-1.2.0.zip`. On Windows, `npm run package:windows` builds that same ZIP with PowerShell.
